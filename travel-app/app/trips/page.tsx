@@ -1,45 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, MapPin, Calendar } from "lucide-react";
+import { getCurrentUser } from "aws-amplify/auth";
 import Link from "next/link";
 
-interface Trip {
-  id: number;
-  destination: string;
-  country: string;
-  startDate: string;
-  endDate: string;
-  entriesCount: number;
-}
-
 export default function Trips() {
-  const [trips] = useState<Trip[]>([
-    {
-      id: 1,
-      destination: "Santorini",
-      country: "Greece",
-      startDate: "Jun 15, 2024",
-      endDate: "Jun 22, 2024",
-      entriesCount: 12,
-    },
-    {
-      id: 2,
-      destination: "Tokyo",
-      country: "Japan",
-      startDate: "Apr 3, 2024",
-      endDate: "Apr 17, 2024",
-      entriesCount: 28,
-    },
-    {
-      id: 3,
-      destination: "Patagonia",
-      country: "Argentina",
-      startDate: "Feb 10, 2024",
-      endDate: "Feb 24, 2024",
-      entriesCount: 19,
-    },
-  ]);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTrips = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        const userId = currentUser.userId;
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/Trips?userId=${userId}`
+        );
+
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+
+        const data = await res.json();
+        setTrips(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrips();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg text-accent"></span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-base-100 pt-24">
+        <div className="container mx-auto px-4">
+          <div className="alert alert-error">
+            <span>Error loading trips: {error}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-base-100">
@@ -69,35 +81,52 @@ export default function Trips() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {trips.map((trip) => (
                 <Link
-                  key={trip.id}
-                  href={`/trips/${trip.id}`}
+                  key={trip.TripID}
+                  href={`/trips/${trip.TripID}`}
                   className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer hover:-translate-y-2 border border-base-300"
                 >
                   <figure className="relative h-64 overflow-hidden">
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                      <MapPin className="h-24 w-24 text-primary/40" />
-                    </div>
+                    {trip.ImageUrls && trip.ImageUrls.length > 0 ? (
+                      <img
+                        src={trip.ImageUrls[0]}
+                        alt={trip.Title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                        <MapPin className="h-24 w-24 text-primary/40" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                    <div className="badge badge-accent absolute top-4 right-4">
-                      {trip.entriesCount} entries
-                    </div>
                   </figure>
 
                   <div className="card-body">
                     <h3 className="card-title text-2xl font-serif">
-                      {trip.destination}
+                      {trip.Title}
                     </h3>
-                    <div className="flex items-center gap-2 text-base-content/70 mb-2">
-                      <MapPin className="h-4 w-4" />
-                      <span className="text-sm">{trip.country}</span>
-                    </div>
+                    {trip.Location && (
+                      <div className="flex items-center gap-2 text-base-content/70 mb-2">
+                        <MapPin className="h-4 w-4" />
+                        <span className="text-sm">{trip.Location}</span>
+                      </div>
+                    )}
 
-                    <div className="flex items-center gap-2 text-sm text-base-content/70">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {trip.startDate} - {trip.endDate}
-                      </span>
-                    </div>
+                    {(trip.StartDate || trip.EndDate) && (
+                      <div className="flex items-center gap-2 text-sm text-base-content/70">
+                        <Calendar className="h-4 w-4" />
+                        <span>
+                          {trip.StartDate && new Date(trip.StartDate).toLocaleDateString()}
+                          {trip.StartDate && trip.EndDate && " - "}
+                          {trip.EndDate && new Date(trip.EndDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {trip.Description && (
+                      <p className="text-sm text-base-content/60 line-clamp-2 mt-2">
+                        {trip.Description}
+                      </p>
+                    )}
                   </div>
                 </Link>
               ))}
@@ -112,10 +141,12 @@ export default function Trips() {
                 <p className="text-base-content/70">
                   Start your journey by creating your first trip journal
                 </p>
-                <button className="btn btn-accent btn-lg gap-2 mt-4">
-                  <Plus className="h-5 w-5" />
-                  Create Your First Trip
-                </button>
+                <Link href="/trips/add">
+                  <button className="btn btn-accent btn-lg gap-2 mt-4">
+                    <Plus className="h-5 w-5" />
+                    Create Your First Trip
+                  </button>
+                </Link>
               </div>
             </div>
           )}
