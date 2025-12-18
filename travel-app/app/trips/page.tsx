@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, MapPin, Calendar } from "lucide-react";
+import {
+  Plus,
+  MapPin,
+  Calendar,
+  Lock as LockIcon,
+  Globe,
+  UnlockIcon,
+} from "lucide-react";
 import { getCurrentUser } from "aws-amplify/auth";
 import Link from "next/link";
 
@@ -9,6 +16,7 @@ export default function Trips() {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [images, setImages] = useState<File[]>([]); // work on this and make sure an image is acutally represented
 
   useEffect(() => {
     const fetchTrips = async () => {
@@ -98,6 +106,22 @@ export default function Trips() {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                    <div className="absolute bottom-3 right-3">
+                      <span
+                        className={`badge badge-sm ${
+                          trip.Visibility === "private"
+                            ? "badge-error"
+                            : "badge-success"
+                        } gap-1`}
+                      >
+                        {trip.Visibility === "private" ? (
+                          <LockIcon className="h-3 w-3" />
+                        ) : (
+                          <UnlockIcon className="h-3 w-3" />
+                        )}{" "}
+                        {trip.Visibility}
+                      </span>
+                    </div>
                   </figure>
 
                   <div className="card-body">
@@ -115,9 +139,11 @@ export default function Trips() {
                       <div className="flex items-center gap-2 text-sm text-base-content/70">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          {trip.StartDate && new Date(trip.StartDate).toLocaleDateString()}
+                          {trip.StartDate &&
+                            new Date(trip.StartDate).toLocaleDateString()}
                           {trip.StartDate && trip.EndDate && " - "}
-                          {trip.EndDate && new Date(trip.EndDate).toLocaleDateString()}
+                          {trip.EndDate &&
+                            new Date(trip.EndDate).toLocaleDateString()}
                         </span>
                       </div>
                     )}
