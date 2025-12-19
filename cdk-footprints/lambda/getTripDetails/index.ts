@@ -11,7 +11,7 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION})
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
         const userId = event.queryStringParameters?.userId
-        const tripId = event.queryStringParameters?.tripId
+        const tripId = event.pathParameters?.id
 
         if (!userId || !tripId) {
             return {
