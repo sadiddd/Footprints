@@ -18,10 +18,19 @@ export default function AddTrip() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    // Check if there are any HEIC files that need conversion
+    const hasHeicFiles = files.some((file) => isHeicFile(file));
+
+    // Show loading immediately if we have HEIC files to convert
+    if (hasHeicFiles) {
+      setLoading(true);
+    }
 
     try {
       // Convert HEIC files to JPEG before adding
@@ -43,6 +52,9 @@ export default function AddTrip() {
           ? err.message
           : "Failed to process images. Please try again."
       );
+    } finally {
+      // Always turn off loading when done
+      setLoading(false);
     }
   };
 
@@ -158,7 +170,6 @@ export default function AddTrip() {
       setIsSubmitting(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-base-100 pt-24 pb-12">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -189,6 +200,16 @@ export default function AddTrip() {
                 Photos
               </label>
 
+              {/* Loading Indicator */}
+              {loading && (
+                <div className="flex items-center justify-center p-6 bg-base-300 rounded-xl border-2 border-accent shadow-lg">
+                  <span className="loading loading-spinner loading-lg text-accent mr-4"></span>
+                  <span className="text-base-content font-medium text-lg">
+                    Converting images...
+                  </span>
+                </div>
+              )}
+
               {/* Image Previews */}
               {imagePreviews.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -215,7 +236,11 @@ export default function AddTrip() {
               )}
 
               {/* Upload Button */}
-              <label className="btn btn-outline btn-accent btn-lg w-full gap-3 cursor-pointer hover:scale-[1.02] transition-transform">
+              <label
+                className={`btn btn-outline btn-accent btn-lg w-full gap-3 cursor-pointer hover:scale-[1.02] transition-transform ${
+                  loading ? "opacity-50 pointer-events-none" : ""
+                }`}
+              >
                 <Upload className="w-5 h-5" />
                 {imagePreviews.length === 0
                   ? "Upload Photos"
