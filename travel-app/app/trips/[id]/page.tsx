@@ -25,6 +25,8 @@ export default function TripDetails() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
 
   useEffect(() => {
     fetchTrip();
@@ -43,10 +45,89 @@ export default function TripDetails() {
       const data = await res.json();
       console.log("Trip data received:", data);
       setTrip(data);
+
+      // Check if ImageUrls are already presigned URLs (contain query parameters) or if they're keys
+      if (data.ImageUrls && data.ImageUrls.length > 0) {
+        // Check if the first URL is already a presigned URL (has query parameters)
+        const firstUrl = data.ImageUrls[0];
+        const isPresignedUrl =
+          firstUrl &&
+          (firstUrl.includes("?") ||
+            (firstUrl.startsWith("https://") && firstUrl.includes("X-Amz")));
+
+        if (isPresignedUrl) {
+          // Already presigned URLs from getTripDetails, use them directly
+          setImageUrls(data.ImageUrls);
+        } else {
+          // They're S3 keys, need to fetch presigned URLs
+          await fetchImageUrls(data.ImageUrls);
+        }
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchImageUrls = async (keys: string[]) => {
+    setImagesLoading(true);
+    try {
+      console.log("Raw keys from trip data:", keys);
+
+      // Extract just the S3 key from the stored URLs
+      // If they're full URLs, extract the key; if they're already keys, use as-is
+      const s3Keys = keys.map((key) => {
+        // If it's already just a key (doesn't start with http), use it
+        if (!key.startsWith("http://") && !key.startsWith("https://")) {
+          return key;
+        }
+
+        // It's a full URL - extract the key
+        try {
+          const urlObj = new URL(key);
+          // Remove leading slash from pathname
+          return urlObj.pathname.substring(1);
+        } catch (urlErr) {
+          // Fallback: try regex extraction
+          const match = key.match(/amazonaws\.com\/([^?]+)/);
+          if (match) {
+            return decodeURIComponent(match[1]);
+          }
+          // Last resort: return as-is and hope for the best
+          console.error("Could not extract S3 key from:", key);
+          return key;
+        }
+      });
+
+      console.log("Extracted S3 keys:", s3Keys);
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image-urls`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrls: s3Keys,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch image URLs");
+
+      const data = await res.json();
+      console.log("Image URLs response:", data);
+
+      // Extract presigned URLs from the response
+      const urls = data.imageUrls
+        .filter((item: any) => item.presignedUrl)
+        .map((item: any) => item.presignedUrl);
+
+      console.log("Extracted presigned URLs:", urls);
+      setImageUrls(urls);
+    } catch (err) {
+      console.error("Error fetching image URLs:", err);
+    } finally {
+      setImagesLoading(false);
     }
   };
 
@@ -93,10 +174,6 @@ export default function TripDetails() {
     );
   }
 
-  // Placeholder image - replace with actual AWS S3 images later
-  const placeholderImage =
-    "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop";
-
   return (
     <div className="min-h-screen bg-background paper-texture">
       <main className="pb-16">
@@ -114,31 +191,58 @@ export default function TripDetails() {
         {/* Hero image */}
         <div className="container mx-auto px-4 mb-8">
           <div className="relative aspect-[21/9] rounded-sm overflow-hidden polaroid-shadow">
-            <img
-              src={placeholderImage}
-              alt={trip.Title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-transparent to-transparent" />
-
-            {/* Title overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
-              <h1 className="font-serif text-3xl md:text-5xl text-polaroid mb-4 drop-shadow-lg">
-                {trip.Title}
-              </h1>
-              <div className="flex items-center gap-4 text-polaroid/90">
-                <span className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  {trip.Location}
-                </span>
-                <span className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {trip.StartDate &&
-                    new Date(trip.StartDate).toLocaleDateString()}{" "}
-                  -{" "}
-                  {trip.EndDate && new Date(trip.EndDate).toLocaleDateString()}
-                </span>
+            {imageUrls[0] ? (
+              <img
+                src={imageUrls[0]}
+                alt={trip.Title}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  console.error("Error loading hero image:", imageUrls[0], e);
+                }}
+                onLoad={() => {
+                  console.log("Hero image loaded successfully:", imageUrls[0]);
+                }}
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                <span className="text-muted-foreground">No image</span>
               </div>
+            )}
+            {imagesLoading && (
+              <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Title and metadata */}
+        <div className="container mx-auto px-4 mb-8">
+          <div className="max-w-3xl mx-auto">
+            <h1 className="font-serif text-3xl md:text-5xl text-foreground mb-4">
+              {trip.Title}
+            </h1>
+            <div className="flex items-center gap-4 text-muted-foreground">
+              <span className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                {trip.Location}
+              </span>
+              <span className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                {trip.StartDate &&
+                  new Date(trip.StartDate).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}{" "}
+                -{" "}
+                {trip.EndDate &&
+                  new Date(trip.EndDate).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+              </span>
             </div>
           </div>
         </div>
@@ -167,7 +271,11 @@ export default function TripDetails() {
                 </button>
                 <span className="text-sm text-muted-foreground font-sans italic">
                   {trip.StartDate &&
-                    new Date(trip.StartDate).toLocaleDateString()}
+                    new Date(trip.StartDate).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
                 </span>
               </div>
             </article>
@@ -179,18 +287,40 @@ export default function TripDetails() {
                   Photo Gallery
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {trip.ImageUrls.map((image, index) => (
-                    <div
-                      key={index}
-                      className="relative aspect-square rounded-sm overflow-hidden polaroid-shadow"
-                    >
-                      <img
-                        src={placeholderImage}
-                        alt={`${trip.Title} - Photo ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                  {imagesLoading ? (
+                    <div className="col-span-full text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-terracotta mx-auto"></div>
+                      <p className="mt-2 text-muted-foreground">
+                        Loading images...
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    imageUrls.map((imageUrl, index) => (
+                      <div
+                        key={index}
+                        className="relative aspect-square rounded-sm overflow-hidden polaroid-shadow"
+                      >
+                        <img
+                          src={imageUrl}
+                          alt={`${trip.Title} - Photo ${index + 1}`}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error(
+                              `Error loading image ${index}:`,
+                              imageUrl,
+                              e
+                            );
+                          }}
+                          onLoad={() => {
+                            console.log(
+                              `Image ${index} loaded successfully:`,
+                              imageUrl
+                            );
+                          }}
+                        />
+                      </div>
+                    ))
+                  )}
                 </div>
               </section>
             )}

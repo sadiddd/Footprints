@@ -27,6 +27,7 @@ export class CdkFootprintsStack extends cdk.Stack {
         allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
         allowedOrigins: ['*'],
         allowedHeaders: ['*'],
+        maxAge: 3000,
       }]
     })
 
@@ -45,6 +46,7 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         TABLE_NAME: tripsTable.tableName,
+        BUCKET_NAME: photosBucket.bucketName,
       }
     })
 
@@ -54,6 +56,7 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         TABLE_NAME: tripsTable.tableName,
+        BUCKET_NAME: photosBucket.bucketName,
       }
     })
 

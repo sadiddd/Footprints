@@ -39,12 +39,52 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
                     try {
                         // Extract key from first image URL
                         const firstImageUrl = trip.ImageUrls[0];
-                        const urlObj = new URL(firstImageUrl);
-                        const key = urlObj.pathname.substring(1);
+                        let key: string;
+                        
+                        // Check if imageUrl is already a key (doesn't start with http:// or https://)
+                        if (!firstImageUrl.startsWith('http://') && !firstImageUrl.startsWith('https://')) {
+                            // It's already a key, decode it in case it's URL-encoded
+                            key = decodeURIComponent(firstImageUrl);
+                        } else {
+                            // It's a full URL, extract the key
+                            try {
+                                const urlObj = new URL(firstImageUrl);
+                                // Remove leading slash from pathname and decode
+                                key = decodeURIComponent(urlObj.pathname.substring(1));
+                            } catch (urlErr) {
+                                // If URL parsing fails, try to extract key from S3 URL format
+                                // Handle both standard S3 URLs and presigned URLs
+                                const match = firstImageUrl.match(/amazonaws\.com\/([^?]+)/);
+                                if (match) {
+                                    key = decodeURIComponent(match[1]);
+                                } else {
+                                    // Last resort: use as-is after decoding
+                                    key = decodeURIComponent(firstImageUrl);
+                                }
+                            }
+                        }
+
+                        // Detect content type from file extension
+                        const getContentType = (key: string): string => {
+                            const ext = key.toLowerCase().split('.').pop();
+                            const contentTypes: Record<string, string> = {
+                                'jpg': 'image/jpeg',
+                                'jpeg': 'image/jpeg',
+                                'png': 'image/png',
+                                'gif': 'image/gif',
+                                'webp': 'image/webp',
+                                'svg': 'image/svg+xml',
+                                'heic': 'image/heic',
+                                'heif': 'image/heif',
+                            };
+                            return contentTypes[ext || ''] || 'image/jpeg'; // Default to JPEG if unknown
+                        };
 
                         const getCommand = new GetObjectCommand({
                             Bucket: process.env.BUCKET_NAME,
                             Key: key,
+                            ResponseCacheControl: 'max-age=3600',
+                            ResponseContentType: getContentType(key),
                         });
 
                         const presignedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });

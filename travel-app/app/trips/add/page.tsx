@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Camera, MapPin, FileText, X, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
+import { processImageFiles, isHeicFile } from "@/utils/imageConversion";
 
 export default function AddTrip() {
   const router = useRouter();
@@ -18,17 +19,31 @@ export default function AddTrip() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Add new files to existing ones
-    const newImages = [...images, ...files];
-    setImages(newImages);
+    try {
+      // Convert HEIC files to JPEG before adding
+      const processedFiles = await processImageFiles(files);
 
-    // Create previews
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
-    setImagePreviews([...imagePreviews, ...newPreviews]);
+      // Add new files to existing ones
+      const newImages = [...images, ...processedFiles];
+      setImages(newImages);
+
+      // Create previews
+      const newPreviews = processedFiles.map((file) =>
+        URL.createObjectURL(file)
+      );
+      setImagePreviews([...imagePreviews, ...newPreviews]);
+    } catch (err) {
+      console.error("Error processing images:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to process images. Please try again."
+      );
+    }
   };
 
   const removeImage = (index: number) => {
@@ -75,17 +90,27 @@ export default function AddTrip() {
         const { uploadUrls } = await presignResponse.json();
 
         // Step 2: Upload all images to S3 in parallel
-        await Promise.all(
+        const uploadResults = await Promise.all(
           uploadUrls.map(async (urlData: any, index: number) => {
             const file = images[index];
+            console.log(`Uploading ${file.name} to:`, urlData.uploadUrl);
+
             const uploadResponse = await fetch(urlData.uploadUrl, {
               method: "PUT",
               headers: { "Content-Type": file.type },
               body: file,
             });
 
+            console.log(
+              `Upload response for ${file.name}:`,
+              uploadResponse.status,
+              uploadResponse.statusText
+            );
+
             if (!uploadResponse.ok) {
-              throw new Error(`Failed to upload ${file.name}`);
+              throw new Error(
+                `Failed to upload ${file.name}: ${uploadResponse.status} ${uploadResponse.statusText}`
+              );
             }
 
             return urlData.imageUrl;
@@ -94,6 +119,7 @@ export default function AddTrip() {
 
         // Extract the final image URLs
         imageUrls = uploadUrls.map((urlData: any) => urlData.imageUrl);
+        console.log("Image keys being stored in DynamoDB:", imageUrls);
       }
 
       // Step 3: Create trip in DynamoDB

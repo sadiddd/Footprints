@@ -2,27 +2,6 @@ import { Map, Camera, BookText, Globe } from "lucide-react";
 import Link from "next/link";
 
 const Landing = () => {
-  // const features = [
-  //   {
-  //     icon: Map,
-  //     title: "Trace Your Footprints",
-  //     description:
-  //       "Pin every place you've visited and watch your travel history unfold on an interactive map.",
-  //   },
-  //   {
-  //     icon: Camera,
-  //     title: "Keep Your Memories",
-  //     description:
-  //       "Upload photos and notes so that every destination carries the moments that made it special.",
-  //   },
-  //   {
-  //     icon: BookText,
-  //     title: "Build Your Journals",
-  //     description:
-  //       "Organize your trips into beautiful journals that preserve your experiences forever.",
-  //   },
-  // ];
-
   return (
     <div className="min-h-screen bg-base-100">
       {/* Hero Section */}
@@ -69,28 +48,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Features Section
-      <section className="py-24 bg-base-100">
-        <div className="container mx-auto px-6 sm:px-8">
-          <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
-            {features.map((feature, index) => (
-              <div key={index} className="text-center space-y-4">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
-                  <feature.icon className="h-10 w-10 text-primary" />
-                </div>
-                <h3 className="text-2xl font-serif font-bold text-base-content">
-                  {feature.title}
-                </h3>
-                <p className="text-base-content/70 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section> */}
-
-      {/* Footer */}
       <footer className="py-8 bg-base-200">
         <div className="container mx-auto px-6 text-center">
           <p className="text-base-content/60">© 2025 Footprints</p>

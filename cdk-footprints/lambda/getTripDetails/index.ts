@@ -6,7 +6,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 const client = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(client)
-const s3Client = new S3Client({ region: process.env.AWS_REGION})
+const s3Client = new S3Client({});
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
@@ -50,12 +50,52 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             const presignedUrls = await Promise.all(
                 trip.ImageUrls.map(async (imageUrl: string) => {
                     try {
-                        const urlObj = new URL(imageUrl)
-                        const key = urlObj.pathname.substring(1)
+                        let key: string;
+                        
+                        // Check if imageUrl is already a key (doesn't start with http:// or https://)
+                        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+                            // It's already a key, decode it in case it's URL-encoded
+                            key = decodeURIComponent(imageUrl);
+                        } else {
+                            // It's a full URL, extract the key
+                            try {
+                                const urlObj = new URL(imageUrl);
+                                // Remove leading slash from pathname and decode
+                                key = decodeURIComponent(urlObj.pathname.substring(1));
+                            } catch (urlErr) {
+                                // If URL parsing fails, try to extract key from S3 URL format
+                                // Handle both standard S3 URLs and presigned URLs
+                                const match = imageUrl.match(/amazonaws\.com\/([^?]+)/);
+                                if (match) {
+                                    key = decodeURIComponent(match[1]);
+                                } else {
+                                    // Last resort: use as-is after decoding
+                                    key = decodeURIComponent(imageUrl);
+                                }
+                            }
+                        }
+
+                        // Detect content type from file extension
+                        const getContentType = (key: string): string => {
+                            const ext = key.toLowerCase().split('.').pop();
+                            const contentTypes: Record<string, string> = {
+                                'jpg': 'image/jpeg',
+                                'jpeg': 'image/jpeg',
+                                'png': 'image/png',
+                                'gif': 'image/gif',
+                                'webp': 'image/webp',
+                                'svg': 'image/svg+xml',
+                                'heic': 'image/heic',
+                                'heif': 'image/heif',
+                            };
+                            return contentTypes[ext || ''] || 'image/jpeg'; // Default to JPEG if unknown
+                        };
 
                         const getCommand = new GetObjectCommand({
                             Bucket: process.env.BUCKET_NAME,
                             Key: key,
+                            ResponseCacheControl: 'max-age=3600',
+                            ResponseContentType: getContentType(key),
                         })
                         return await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
                     } catch (err) {
