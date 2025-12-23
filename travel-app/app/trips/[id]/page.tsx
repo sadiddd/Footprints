@@ -5,10 +5,10 @@ import {
   MapPin,
   ArrowLeft,
   Calendar,
-  Heart,
   X,
   ChevronLeft,
   ChevronRight,
+  Trash,
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
@@ -75,6 +75,35 @@ export default function TripDetails() {
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this trip?")) return;
+
+    setLoading(true);
+    try {
+      const currentUser = await getCurrentUser();
+      const userId = currentUser.userId;
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Trips`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          UserID: userId,
+          TripID: tripId,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+      // Redirect to trips page after successful deletion
+      router.push("/trips");
+    } catch (err: any) {
+      setError(err.message);
+      setLoading(false);
+    }
   };
 
   const fetchTrip = async () => {
@@ -308,11 +337,15 @@ export default function TripDetails() {
                 ))}
               </div>
 
-              {/* Like button */}
               <div className="mt-8 pt-6 border-t border-paper-dark flex items-center justify-between">
                 <button className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group">
-                  <Heart className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span className="font-sans text-sm">Add to favorites</span>
+                  <Trash className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span
+                    className="font-sans text-sm"
+                    onClick={() => handleDelete()}
+                  >
+                    Delete Trip
+                  </span>
                 </button>
                 <span className="text-sm text-muted-foreground font-sans italic">
                   {trip.StartDate &&
