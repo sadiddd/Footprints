@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MapPin, ArrowLeft, Calendar, Heart } from "lucide-react";
+import {
+  MapPin,
+  ArrowLeft,
+  Calendar,
+  Heart,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
 import Link from "next/link";
@@ -28,9 +36,46 @@ export default function TripDetails() {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imagesLoading, setImagesLoading] = useState(false);
 
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   useEffect(() => {
     fetchTrip();
   }, [tripId]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isViewerOpen) return;
+
+      if (e.key === "Escape") {
+        setIsViewerOpen(false);
+      } else if (e.key === "ArrowLeft") {
+        goToPrevious();
+      } else if (e.key === "ArrowRight") {
+        goToNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isViewerOpen, currentIndex, imageUrls.length]);
+
+  const openLightbox = (index: number) => {
+    setCurrentIndex(index);
+    setIsViewerOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setIsViewerOpen(false);
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % imageUrls.length);
+  };
+
+  const goToPrevious = () => {
+    setCurrentIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
+  };
 
   const fetchTrip = async () => {
     try {
@@ -280,7 +325,6 @@ export default function TripDetails() {
               </div>
             </article>
 
-            {/* Image gallery placeholder */}
             {trip.ImageUrls && trip.ImageUrls.length > 0 && (
               <section>
                 <h2 className="font-serif text-2xl text-foreground mb-6">
@@ -298,7 +342,8 @@ export default function TripDetails() {
                     imageUrls.map((imageUrl, index) => (
                       <div
                         key={index}
-                        className="relative aspect-square rounded-sm overflow-hidden polaroid-shadow"
+                        className="relative aspect-square rounded-sm overflow-hidden polaroid-shadow cursor-pointer transition-transform hover:scale-105"
+                        onClick={() => openLightbox(index)}
                       >
                         <img
                           src={imageUrl}
@@ -327,6 +372,68 @@ export default function TripDetails() {
           </div>
         </div>
       </main>
+
+      {/* Lightbox Modal */}
+      {isViewerOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+          onClick={closeLightbox}
+        >
+          {/* Close button */}
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Close lightbox"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Previous button */}
+          {imageUrls.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPrevious();
+              }}
+              className="absolute left-4 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+
+          {/* Image container */}
+          <div
+            className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center px-16"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={imageUrls[currentIndex]}
+              alt={`${trip?.Title} - Photo ${currentIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+
+            {/* Image counter */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full text-sm">
+              {currentIndex + 1} / {imageUrls.length}
+            </div>
+          </div>
+
+          {/* Next button */}
+          {imageUrls.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToNext();
+              }}
+              className="absolute right-4 z-50 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="Next image"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

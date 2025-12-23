@@ -28,7 +28,7 @@ export async function convertHeicToJpeg(file: File): Promise<File> {
     return jpegFile;
   } catch (error) {
     console.error('Error converting HEIC to JPEG:', error);
-    throw new Error('Failed to convert HEIC image. Please try a different image format.');
+    throw new Error('Failed to convert HEIC image.m    Please try a different image format.');
   }
 }
 
