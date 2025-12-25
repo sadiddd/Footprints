@@ -57,7 +57,6 @@ export default function UpdateTrip() {
       const data = await res.json();
       setTrip(data);
 
-      // Fetch existing images if they exist
       if (data.ImageUrls && data.ImageUrls.length > 0) {
         await fetchImageUrls(data.ImageUrls);
       }
@@ -77,12 +76,10 @@ export default function UpdateTrip() {
       // Extract just the S3 key from the stored URLs
       // If they're full URLs, extract the key; if they're already keys, use as-is
       const s3Keys = keys.map((key) => {
-        // If it's already just a key (doesn't start with http), use it
         if (!key.startsWith("http://") && !key.startsWith("https://")) {
           return key;
         }
 
-        // It's a full URL - extract the key
         try {
           const urlObj = new URL(key);
           // Remove leading slash from pathname
@@ -93,13 +90,10 @@ export default function UpdateTrip() {
           if (match) {
             return decodeURIComponent(match[1]);
           }
-          // Last resort: return as-is and hope for the best
           console.error("Could not extract S3 key from:", key);
           return key;
         }
       });
-
-      console.log("Extracted S3 keys:", s3Keys);
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image-urls`, {
         method: "POST",
@@ -114,14 +108,12 @@ export default function UpdateTrip() {
       if (!res.ok) throw new Error("Failed to fetch image URLs");
 
       const data = await res.json();
-      console.log("Image URLs response:", data);
 
       // Extract presigned URLs from the response
       const urls = data.imageUrls
         .filter((item: any) => item.presignedUrl)
         .map((item: any) => item.presignedUrl);
 
-      console.log("Extracted presigned URLs:", urls);
       setImageUrls(urls);
     } catch (err) {
       console.error("Error fetching image URLs:", err);
@@ -163,7 +155,6 @@ export default function UpdateTrip() {
           : "Failed to process images. Please try again."
       );
     } finally {
-      // Always turn off loading when done
       setLoading(false);
     }
   };
