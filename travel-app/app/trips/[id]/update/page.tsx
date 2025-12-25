@@ -177,7 +177,7 @@ export default function UpdateTrip() {
                 </label>
                 <input
                   type="date"
-                  value={startDate}
+                  value={trip?.StartDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="input input-bordered input-lg w-full bg-base-100 text-base-content focus:input-accent transition-all"
                 />
@@ -190,7 +190,7 @@ export default function UpdateTrip() {
                 </label>
                 <input
                   type="date"
-                  value={endDate}
+                  value={trip?.EndDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   min={startDate}
                   className="input input-bordered input-lg w-full bg-base-100 text-base-content focus:input-accent transition-all"
@@ -233,9 +233,6 @@ export default function UpdateTrip() {
                   Private - Only you can view this trip
                 </option>
               </select>
-              <p className="text-sm text-base-content/60">
-                You can change this setting later
-              </p>
             </div>
 
             {/* Action Buttons */}
@@ -264,22 +261,6 @@ export default function UpdateTrip() {
               </button>
             </div>
           </form>
-        </div>
-
-        {/* Helpful Tips */}
-        <div className="mt-8 bg-accent/10 rounded-2xl p-6 border border-accent/20">
-          <h3 className="font-semibold text-base-content mb-3 flex items-center gap-2">
-            <Camera className="w-5 h-5 text-accent" />
-            Tips for a great trip post
-          </h3>
-          <ul className="space-y-2 text-base-content/80">
-            <li>
-              • Add multiple photos to showcase different aspects of your trip
-            </li>
-            <li>• Be specific with your location to help others find it</li>
-            <li>• Share personal insights and recommendations</li>
-            <li>• Include details about activities, food, or hidden gems</li>
-          </ul>
         </div>
       </div>
     </div>
