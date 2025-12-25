@@ -2,12 +2,26 @@
 
 import { useState } from "react";
 import { Camera, MapPin, FileText, X, Upload } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
 import { processImageFiles } from "@/utils/imageConversion";
 
-export default function AddTrip() {
+interface Trip {
+  TripID: string;
+  Title: string;
+  Location: string;
+  Description: string;
+  StartDate: string;
+  EndDate: string;
+  Visibility: string;
+  ImageUrls?: string[];
+}
+
+export default function UpdateTrip() {
   const router = useRouter();
+  const params = useParams();
+  const tripId = params.id as string;
+
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
@@ -18,6 +32,26 @@ export default function AddTrip() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [trip, setTrip] = useState<Trip | null>(null);
+
+  const fetchTrip = async () => {
+    try {
+      const currentUser = await getCurrentUser();
+      const userId = currentUser.userId;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/Trips/${tripId}?userId=${userId}}`
+      );
+
+      if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+      const data = await res.json();
+      setTrip(data);
+    } catch (err: any) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

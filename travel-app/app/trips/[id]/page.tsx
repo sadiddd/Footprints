@@ -133,7 +133,6 @@ export default function TripDetails() {
       if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
 
       const data = await res.json();
-      console.log("Trip data received:", data);
       setTrip(data);
 
       // Check if ImageUrls are already presigned URLs (contain query parameters) or if they're keys
