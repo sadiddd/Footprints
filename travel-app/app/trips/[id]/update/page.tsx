@@ -486,10 +486,10 @@ export default function UpdateTrip() {
                 {isSubmitting ? (
                   <>
                     <span className="loading loading-spinner"></span>
-                    Creating Trip...
+                    Updating Trip...
                   </>
                 ) : (
-                  "Create Trip"
+                  "Update Trip"
                 )}
               </button>
             </div>

@@ -30,19 +30,8 @@ export default function TripDetails() {
   const router = useRouter();
   const params = useParams();
   const tripId = params.id as string;
-
   const [trip, setTrip] = useState<Trip | null>(null);
 
-  // Helper function to format dates without timezone issues
-  const formatDate = (dateString: string) => {
-    const [year, month, day] = dateString.split("-");
-    const date = new Date(Number(year), Number(month) - 1, Number(day));
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -71,6 +60,16 @@ export default function TripDetails() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isViewerOpen, currentIndex, imageUrls.length]);
+
+  const formatDate = (dateString: string) => {
+    const [year, month, day] = dateString.split("-");
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   const openLightbox = (index: number) => {
     setCurrentIndex(index);
@@ -110,7 +109,6 @@ export default function TripDetails() {
 
       if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
 
-      // Redirect to trips page after successful deletion
       router.push("/trips");
     } catch (err: any) {
       setError(err.message);
@@ -143,67 +141,6 @@ export default function TripDetails() {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchImageUrls = async (keys: string[]) => {
-    setImagesLoading(true);
-    try {
-      console.log("Raw keys from trip data:", keys);
-
-      // Extract just the S3 key from the stored URLs
-      // If they're full URLs, extract the key; if they're already keys, use as-is
-      const s3Keys = keys.map((key) => {
-        // If it's already just a key (doesn't start with http), use it
-        if (!key.startsWith("http://") && !key.startsWith("https://")) {
-          return key;
-        }
-
-        // It's a full URL - extract the key
-        try {
-          const urlObj = new URL(key);
-          // Remove leading slash from pathname
-          return urlObj.pathname.substring(1);
-        } catch (urlErr) {
-          // Fallback: try regex extraction
-          const match = key.match(/amazonaws\.com\/([^?]+)/);
-          if (match) {
-            return decodeURIComponent(match[1]);
-          }
-          // Last resort: return as-is and hope for the best
-          console.error("Could not extract S3 key from:", key);
-          return key;
-        }
-      });
-
-      console.log("Extracted S3 keys:", s3Keys);
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image-urls`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageUrls: s3Keys,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to fetch image URLs");
-
-      const data = await res.json();
-      console.log("Image URLs response:", data);
-
-      // Extract presigned URLs from the response
-      const urls = data.imageUrls
-        .filter((item: any) => item.presignedUrl)
-        .map((item: any) => item.presignedUrl);
-
-      console.log("Extracted presigned URLs:", urls);
-      setImageUrls(urls);
-    } catch (err) {
-      console.error("Error fetching image URLs:", err);
-    } finally {
-      setImagesLoading(false);
     }
   };
 
