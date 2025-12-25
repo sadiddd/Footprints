@@ -135,22 +135,9 @@ export default function TripDetails() {
       const data = await res.json();
       setTrip(data);
 
-      // Check if ImageUrls are already presigned URLs (contain query parameters) or if they're keys
+      // Images come as presigned URLs from the API
       if (data.ImageUrls && data.ImageUrls.length > 0) {
-        // Check if the first URL is already a presigned URL (has query parameters)
-        const firstUrl = data.ImageUrls[0];
-        const isPresignedUrl =
-          firstUrl &&
-          (firstUrl.includes("?") ||
-            (firstUrl.startsWith("https://") && firstUrl.includes("X-Amz")));
-
-        if (isPresignedUrl) {
-          // Already presigned URLs from getTripDetails, use them directly
-          setImageUrls(data.ImageUrls);
-        } else {
-          // They're S3 keys, need to fetch presigned URLs
-          await fetchImageUrls(data.ImageUrls);
-        }
+        setImageUrls(data.ImageUrls);
       }
     } catch (err: any) {
       setError(err.message);

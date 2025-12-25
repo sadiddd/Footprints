@@ -1,6 +1,3 @@
-// @ts-ignore - heic2any doesn't have perfect TypeScript support
-import heic2any from 'heic2any';
-
 /**
  * Converts a HEIC/HEIF file to JPEG format
  * @param file - The HEIC/HEIF file to convert
@@ -8,6 +5,10 @@ import heic2any from 'heic2any';
  */
 export async function convertHeicToJpeg(file: File): Promise<File> {
   try {
+    // Dynamically import heic2any only on client-side
+    // @ts-ignore - heic2any doesn't have perfect TypeScript support
+    const heic2any = (await import('heic2any')).default;
+    
     // Convert HEIC to JPEG blob
     const convertedBlob = await heic2any({
       blob: file,
