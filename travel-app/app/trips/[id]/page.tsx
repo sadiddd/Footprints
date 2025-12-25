@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash,
+  Pencil,
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
@@ -31,6 +32,17 @@ export default function TripDetails() {
   const tripId = params.id as string;
 
   const [trip, setTrip] = useState<Trip | null>(null);
+
+  // Helper function to format dates without timezone issues
+  const formatDate = (dateString: string) => {
+    const [year, month, day] = dateString.split("-");
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -104,6 +116,10 @@ export default function TripDetails() {
       setError(err.message);
       setLoading(false);
     }
+  };
+
+  const handleUpdate = async () => {
+    router.push(`/trips/${tripId}/update`);
   };
 
   const fetchTrip = async () => {
@@ -303,19 +319,8 @@ export default function TripDetails() {
               </span>
               <span className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                {trip.StartDate &&
-                  new Date(trip.StartDate).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}{" "}
-                -{" "}
-                {trip.EndDate &&
-                  new Date(trip.EndDate).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                {trip.StartDate && formatDate(trip.StartDate)} -{" "}
+                {trip.EndDate && formatDate(trip.EndDate)}
               </span>
             </div>
           </div>
@@ -335,26 +340,6 @@ export default function TripDetails() {
                     {paragraph}
                   </p>
                 ))}
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-paper-dark flex items-center justify-between">
-                <button className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group">
-                  <Trash className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span
-                    className="font-sans text-sm"
-                    onClick={() => handleDelete()}
-                  >
-                    Delete Trip
-                  </span>
-                </button>
-                <span className="text-sm text-muted-foreground font-sans italic">
-                  {trip.StartDate &&
-                    new Date(trip.StartDate).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                </span>
               </div>
             </article>
 
@@ -402,6 +387,24 @@ export default function TripDetails() {
                 </div>
               </section>
             )}
+
+            {/* Action buttons */}
+            <div className="mt-8 pt-6 border-t border-paper-dark flex items-center justify-between">
+              <button
+                className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group"
+                onClick={() => handleUpdate()}
+              >
+                <Pencil className="w-5 h-5 transition-transform group-hover:scale-110" />
+                <span className="font-sans text-sm">Update Trip</span>
+              </button>
+              <button
+                className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group"
+                onClick={() => handleDelete()}
+              >
+                <Trash className="w-5 h-5 transition-transform group-hover:scale-110" />
+                <span className="font-sans text-sm">Delete Trip</span>
+              </button>
+            </div>
           </div>
         </div>
       </main>
