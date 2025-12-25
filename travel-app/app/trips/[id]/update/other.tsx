@@ -1,15 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  Camera,
-  MapPin,
-  FileText,
-  X,
-  Upload,
-  UnlockKeyholeIcon,
-  LockIcon,
-} from "lucide-react";
+import { useState } from "react";
+import { Camera, MapPin, FileText, X, Upload } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
 import { processImageFiles } from "@/utils/imageConversion";
@@ -43,16 +35,12 @@ export default function UpdateTrip() {
   const [loading, setLoading] = useState(true);
   const [trip, setTrip] = useState<Trip | null>(null);
 
-  useEffect(() => {
-    fetchTrip();
-  }, [tripId]);
-
   const fetchTrip = async () => {
     try {
       const currentUser = await getCurrentUser();
       const userId = currentUser.userId;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/Trips/${tripId}?userId=${userId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/Trips/${tripId}?userId=${userId}}`
       );
 
       if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
@@ -65,7 +53,134 @@ export default function UpdateTrip() {
     }
   };
 
-  const handleSubmit = () => {};
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      // Convert HEIC files to JPEG before adding
+      const processedFiles = await processImageFiles(files);
+
+      // Add new files to existing ones
+      const newImages = [...images, ...processedFiles];
+      setImages(newImages);
+
+      // Create previews
+      const newPreviews = processedFiles.map((file) =>
+        URL.createObjectURL(file)
+      );
+      setImagePreviews([...imagePreviews, ...newPreviews]);
+    } catch (err) {
+      console.error("Error processing images:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to process images. Please try again."
+      );
+    }
+  };
+
+  const removeImage = (index: number) => {
+    // Revoke the URL to free memory
+    URL.revokeObjectURL(imagePreviews[index]);
+
+    setImages(images.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const currentUser = await getCurrentUser();
+      const userId = currentUser.userId;
+      const tripId = crypto.randomUUID();
+
+      let imageUrls: string[] = [];
+
+      // Only upload images if there are any
+      if (images.length > 0) {
+        // Step 1: Get presigned URLs for all images
+        const fileNames = images.map((file) => file.name);
+        const presignResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/upload`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              tripId,
+              fileNames,
+            }),
+          }
+        );
+
+        if (!presignResponse.ok) {
+          throw new Error("Failed to get upload URLs");
+        }
+
+        const { uploadUrls } = await presignResponse.json();
+
+        // Step 2: Upload all images to S3 in parallel
+        await Promise.all(
+          uploadUrls.map(async (urlData: any, index: number) => {
+            const file = images[index];
+            const uploadResponse = await fetch(urlData.uploadUrl, {
+              method: "PUT",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+
+            if (!uploadResponse.ok) {
+              throw new Error(`Failed to upload ${file.name}`);
+            }
+
+            return urlData.imageUrl;
+          })
+        );
+
+        // Extract the final image URLs
+        imageUrls = uploadUrls.map((urlData: any) => urlData.imageUrl);
+      }
+
+      // Step 3: Create trip in DynamoDB
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Trips`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          UserID: userId,
+          TripID: tripId,
+          Title: title,
+          Location: location,
+          Description: description,
+          StartDate: startDate || null,
+          EndDate: endDate || null,
+          Visibility: visibility,
+          ImageUrls: imageUrls,
+          CreatedAt: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create trip: ${response.statusText}`);
+      }
+
+      router.push("/trips");
+    } catch (err) {
+      console.error("Error creating trip:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to create trip. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-base-100 pt-24 pb-12">
@@ -73,10 +188,10 @@ export default function UpdateTrip() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-serif font-bold text-base-content mb-3">
-            Update Trip
+            Create New Trip
           </h1>
           <p className="text-base-content/70 text-lg">
-            Adjust or add to an existing trip
+            Capture your adventure and share your memories
           </p>
         </div>
 
@@ -112,7 +227,7 @@ export default function UpdateTrip() {
                       />
                       <button
                         type="button"
-                        // onClick={() => removeImage(index)}
+                        onClick={() => removeImage(index)}
                         className="absolute top-2 right-2 btn btn-circle btn-sm btn-error opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="w-4 h-4" />
@@ -132,7 +247,7 @@ export default function UpdateTrip() {
                   type="file"
                   multiple
                   accept="image/*"
-                  // onChange={handleImageChange}
+                  onChange={handleImageChange}
                   className="hidden"
                 />
               </label>
@@ -161,8 +276,9 @@ export default function UpdateTrip() {
               </label>
               <input
                 type="text"
-                value={trip?.Location}
+                value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g., Paris, France"
                 className="input input-bordered input-lg w-full bg-base-100 text-base-content focus:input-accent transition-all"
                 required
               />
@@ -205,12 +321,16 @@ export default function UpdateTrip() {
                 Description
               </label>
               <textarea
-                value={trip?.Description}
+                value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder="Tell us about your trip... What made it special?"
                 rows={6}
                 className="textarea textarea-bordered textarea-lg w-full bg-base-100 text-base-content focus:textarea-accent transition-all resize-none leading-relaxed"
                 required
               />
+              <p className="text-sm text-base-content/60">
+                Share your favorite moments, tips, or recommendations
+              </p>
             </div>
 
             {/* Privacy Settings */}
@@ -220,17 +340,15 @@ export default function UpdateTrip() {
                 Privacy
               </label>
               <select
-                value={trip?.Visibility}
+                value={visibility}
                 onChange={(e) => setVisibility(e.target.value)}
                 className="select select-bordered select-lg w-full bg-base-100 text-base-content focus:select-accent transition-all"
               >
                 <option value="public">
-                  <UnlockKeyholeIcon />
-                  Public - Anyone can view this trip
+                  🌍 Public - Anyone can view this trip
                 </option>
                 <option value="private">
-                  <LockIcon />
-                  Private - Only you can view this trip
+                  🔒 Private - Only you can view this trip
                 </option>
               </select>
               <p className="text-sm text-base-content/60">
