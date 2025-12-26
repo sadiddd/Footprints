@@ -1,6 +1,13 @@
 "use client";
 
-import { Map, LogInIcon, LogOutIcon, Footprints, User } from "lucide-react";
+import {
+  Map,
+  LogInIcon,
+  LogOutIcon,
+  Footprints,
+  User,
+  Search,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getCurrentUser, signOut, fetchUserAttributes } from "aws-amplify/auth";
@@ -59,12 +66,18 @@ export default function Header() {
     <nav className="fixed top-0 w-full z-50 bg-neutral backdrop-blur-sm border-b border-primary-content/20">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2 group">
-            <Footprints className="h-6 w-6 text-accent transition-transform group-hover:rotate-12" />
-            <span className="text-xl font-serif font-bold text-primary-content">
-              Footprints
-            </span>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2 group">
+              <Footprints className="h-6 w-6 text-accent transition-transform group-hover:rotate-12" />
+              <span className="text-xl font-serif font-bold text-primary-content">
+                Footprints
+              </span>
+            </Link>
+            <Link href="/browse" className="btn btn-accent">
+              <Search className="h-4 w-4" />
+              Browse Trips
+            </Link>
+          </div>
 
           <div className="flex items-center gap-4">
             {!loading && user ? (
