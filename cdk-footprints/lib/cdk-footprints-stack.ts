@@ -60,6 +60,16 @@ export class CdkFootprintsStack extends cdk.Stack {
       }
     })
 
+    // Lambda Function for getPublicTrips
+    const getPublicTripsLambda = new NodejsFunction(this, 'getPublicTripsLambda', {
+      entry: 'lambda/getPublicTrips/index.ts',
+      handler: 'handler',
+      environment: {
+        TABLE_NAME: tripsTable.tableName,
+        BUCKET_NAME: photosBucket.bucketName,
+      }
+    })
+
     // Lambda Function for getUploadUrls
     const getUploadUrlsLambda = new NodejsFunction(this, 'getUploadUrlsLambda', {
       entry: 'lambda/getUploadUrls/index.ts',
