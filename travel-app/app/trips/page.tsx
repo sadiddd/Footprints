@@ -6,7 +6,6 @@ import {
   MapPin,
   Calendar,
   Lock as LockIcon,
-  Globe,
   UnlockIcon,
 } from "lucide-react";
 import { getCurrentUser } from "aws-amplify/auth";
@@ -16,7 +15,7 @@ export default function Trips() {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [images, setImages] = useState<File[]>([]); // work on this and make sure an image is acutally represented
+  const [images, setImages] = useState<File[]>([]);
 
   useEffect(() => {
     const fetchTrips = async () => {
@@ -112,14 +111,13 @@ export default function Trips() {
                           trip.Visibility === "private"
                             ? "badge-error"
                             : "badge-success"
-                        } gap-1`}
+                        }`}
                       >
                         {trip.Visibility === "private" ? (
                           <LockIcon className="h-3 w-3" />
                         ) : (
                           <UnlockIcon className="h-3 w-3" />
-                        )}{" "}
-                        {trip.Visibility}
+                        )}
                       </span>
                     </div>
                   </figure>
