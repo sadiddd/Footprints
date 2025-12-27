@@ -8,12 +8,21 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Trash,
-  Pencil,
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { LocationPin } from "@/app/components/mapPicker";
+
+const TripsMap = dynamic(() => import("@/app/components/tripMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] bg-gray-100 flex items-center justify-center rounded-lg">
+      <p className="text-gray-500">Loading map...</p>
+    </div>
+  ),
+});
 
 interface Trip {
   TripID: string;
@@ -24,6 +33,7 @@ interface Trip {
   EndDate: string;
   Visibility: string;
   ImageUrls?: string[];
+  Locations?: LocationPin[];
 }
 
 export default function TripDetails() {
@@ -268,6 +278,26 @@ export default function TripDetails() {
               </div>
             </article>
 
+            {/* Trip Locations Map */}
+            {trip.Locations && trip.Locations.length > 0 && (
+              <section className="mb-12">
+                <h2 className="font-serif text-2xl text-foreground mb-6">
+                  Trip Locations
+                </h2>
+                <div className="bg-polaroid p-6 md:p-10 polaroid-shadow">
+                  <TripsMap
+                    trips={[
+                      {
+                        tripId: trip.TripID,
+                        title: trip.Title,
+                        location: trip.Location,
+                        locations: trip.Locations,
+                      },
+                    ]}
+                  />
+                </div>
+              </section>
+            )}
             {trip.ImageUrls && trip.ImageUrls.length > 0 && (
               <section>
                 <h2 className="font-serif text-2xl text-foreground mb-6">
