@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Camera, MapPin, FileText, X, Upload } from "lucide-react";
+import { useState, lazy, Suspense } from "react";
+import {
+  Camera,
+  MapPin,
+  FileText,
+  X,
+  Upload,
+  Trash2,
+  Edit2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
 import { processImageFiles, isHeicFile } from "@/utils/imageConversion";
+import type { LocationPin } from "@/app/components/mapPicker";
+
+const MapPicker = lazy(() => import("@/app/components/mapPicker"));
 
 export default function AddTrip() {
   const router = useRouter();
@@ -19,6 +30,7 @@ export default function AddTrip() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [locations, setLocations] = useState<LocationPin[]>([]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -150,6 +162,7 @@ export default function AddTrip() {
           EndDate: endDate || null,
           Visibility: visibility,
           ImageUrls: imageUrls,
+          Locations: locations,
           CreatedAt: new Date().toISOString(),
         }),
       });
@@ -285,6 +298,80 @@ export default function AddTrip() {
                 className="input input-bordered input-lg w-full bg-base-100 text-base-content focus:input-accent transition-all"
                 required
               />
+
+              {/* Map Picker */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-base-content/70">
+                    Click on the map to add locations to your trip
+                  </p>
+                  {locations.length > 0 && (
+                    <span className="badge badge-accent badge-lg">
+                      {locations.length} location
+                      {locations.length !== 1 ? "s" : ""} added
+                    </span>
+                  )}
+                </div>
+
+                {/* Location List */}
+                {locations.length > 0 && (
+                  <div className="bg-base-300 rounded-xl p-4 space-y-2 max-h-40 overflow-y-auto">
+                    {locations.map((loc, index) => (
+                      <div
+                        key={loc.id}
+                        className="flex items-center justify-between bg-base-100 rounded-lg p-3"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <span className="badge badge-accent">
+                            {index + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={loc.label}
+                            onChange={(e) => {
+                              const newLocations = [...locations];
+                              newLocations[index] = {
+                                ...loc,
+                                label: e.target.value,
+                              };
+                              setLocations(newLocations);
+                            }}
+                            placeholder="Location name"
+                            className="input input-sm input-bordered flex-1 bg-base-100"
+                          />
+                          <span className="text-xs text-base-content/60">
+                            {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLocations(
+                              locations.filter((l) => l.id !== loc.id)
+                            )
+                          }
+                          className="btn btn-sm btn-ghost btn-circle text-error"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <Suspense
+                  fallback={
+                    <div className="w-full h-[400px] bg-gray-100 flex items-center justify-center rounded-lg">
+                      <p className="text-gray-500">Loading map...</p>
+                    </div>
+                  }
+                >
+                  <MapPicker
+                    locations={locations}
+                    onLocationsChange={setLocations}
+                  />
+                </Suspense>
+              </div>
             </div>
 
             {/* Date Inputs */}

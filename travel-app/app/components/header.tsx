@@ -63,7 +63,7 @@ export default function Header() {
   };
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-neutral backdrop-blur-sm border-b border-primary-content/20">
+    <nav className="fixed top-0 w-full z-[1000] bg-neutral backdrop-blur-sm border-b border-primary-content/20">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-4">

@@ -5,6 +5,7 @@ import "@aws-amplify/ui-react/styles.css";
 import Header from "@/app/components/header";
 import "./amplify-cognito-config";
 import ConfigureAmplifyClientSide from "./amplify-cognito-config";
+import "leaflet/dist/leaflet.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

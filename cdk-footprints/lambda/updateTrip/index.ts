@@ -19,7 +19,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         }
 
         const data = JSON.parse(event.body);
-        const { UserID, TripID, Visibility } = data;
+        const { UserID, TripID, Visibility, Locations } = data;
 
         if (!UserID || !TripID) {
             return {
@@ -65,17 +65,27 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             };
         }
 
-        // Update the trip visibility
+        // Build update expression dynamically
+        let updateExpression = "SET Visibility = :visibility";
+        const expressionAttributeValues: Record<string, any> = {
+            ":visibility": Visibility
+        };
+
+        // Add Locations if provided
+        if (Locations !== undefined && Array.isArray(Locations)) {
+            updateExpression += ", Locations = :locations";
+            expressionAttributeValues[":locations"] = Locations;
+        }
+
+        // Update the trip
         const updateCommand = new UpdateCommand({
             TableName: process.env.TABLE_NAME,
             Key: {
                 UserID,
                 TripID
             },
-            UpdateExpression: "SET Visibility = :visibility",
-            ExpressionAttributeValues: {
-                ":visibility": Visibility
-            },
+            UpdateExpression: updateExpression,
+            ExpressionAttributeValues: expressionAttributeValues,
             ReturnValues: "ALL_NEW"
         });
 

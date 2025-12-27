@@ -19,7 +19,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         }
 
         const data = JSON.parse(event.body)
-        const { UserID, TripID, Title, Location, Description, ImageUrls, StartDate, EndDate, Visibility, CreatedAt } = data
+        const { UserID, TripID, Title, Location, Description, ImageUrls, StartDate, EndDate, Visibility, CreatedAt, Locations } = data
 
         if (!UserID || !TripID) {
             return {
@@ -45,6 +45,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
                 EndDate: EndDate || null,
                 Visibility: Visibility || "public",
                 CreatedAt: CreatedAt || new Date().toISOString(),
+                Locations: Locations || [],
             },
         })
 
@@ -58,7 +59,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             },
             body: JSON.stringify({ 
                 message: "Trip added successfully", 
-                trip: { UserID, TripID, Title, Location, Description, ImageUrls, StartDate, EndDate, Visibility, CreatedAt } 
+                trip: { UserID, TripID, Title, Location, Description, ImageUrls, StartDate, EndDate, Visibility, CreatedAt, Locations } 
             }),
         };
     } catch (err) {
