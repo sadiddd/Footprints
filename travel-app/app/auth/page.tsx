@@ -52,8 +52,10 @@ export default function Auth() {
         await new Promise((resolve) => setTimeout(resolve, 100));
         router.push("/");
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -73,8 +75,10 @@ export default function Auth() {
       setNeedsVerification(false);
       setIsSignUp(false);
       setVerificationCode("");
-    } catch (err: any) {
-      setError(err.message || "Verification failed");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Verification failed";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

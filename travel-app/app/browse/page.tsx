@@ -10,8 +10,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+interface Trip {
+  TripID: string;
+  Title: string;
+  Location: string;
+  Description: string;
+  ImageUrls?: string[];
+  Visibility: string;
+  StartDate?: string;
+  EndDate?: string;
+}
+
 export default function Trips() {
-  const [trips, setTrips] = useState<any[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,8 +37,10 @@ export default function Trips() {
 
         const data = await res.json();
         setTrips(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }

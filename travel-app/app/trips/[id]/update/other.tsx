@@ -47,8 +47,9 @@ export default function UpdateTrip() {
 
       const data = await res.json();
       setTrip(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -125,24 +126,31 @@ export default function UpdateTrip() {
 
         // Step 2: Upload all images to S3 in parallel
         await Promise.all(
-          uploadUrls.map(async (urlData: any, index: number) => {
-            const file = images[index];
-            const uploadResponse = await fetch(urlData.uploadUrl, {
-              method: "PUT",
-              headers: { "Content-Type": file.type },
-              body: file,
-            });
+          uploadUrls.map(
+            async (
+              urlData: { uploadUrl: string; imageUrl: string },
+              index: number
+            ) => {
+              const file = images[index];
+              const uploadResponse = await fetch(urlData.uploadUrl, {
+                method: "PUT",
+                headers: { "Content-Type": file.type },
+                body: file,
+              });
 
-            if (!uploadResponse.ok) {
-              throw new Error(`Failed to upload ${file.name}`);
+              if (!uploadResponse.ok) {
+                throw new Error(`Failed to upload ${file.name}`);
+              }
+
+              return urlData.imageUrl;
             }
-
-            return urlData.imageUrl;
-          })
+          )
         );
 
         // Extract the final image URLs
-        imageUrls = uploadUrls.map((urlData: any) => urlData.imageUrl);
+        imageUrls = uploadUrls.map(
+          (urlData: { imageUrl: string }) => urlData.imageUrl
+        );
       }
 
       // Step 3: Create trip in DynamoDB

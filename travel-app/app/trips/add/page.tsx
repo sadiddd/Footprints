@@ -14,8 +14,16 @@ import { useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
 import { processImageFiles, isHeicFile } from "@/utils/imageConversion";
 import type { LocationPin } from "@/app/components/mapPicker";
+import dynamic from "next/dynamic";
 
-const MapPicker = lazy(() => import("@/app/components/mapPicker"));
+const MapPicker = dynamic(() => import("@/app/components/mapPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] bg-gray-100 flex items-center justify-center rounded-lg">
+      <p className="text-gray-500">Loading map...</p>
+    </div>
+  ),
+});
 
 export default function AddTrip() {
   const router = useRouter();
@@ -115,34 +123,41 @@ export default function AddTrip() {
 
         // Step 2: Upload all images to S3 in parallel
         const uploadResults = await Promise.all(
-          uploadUrls.map(async (urlData: any, index: number) => {
-            const file = images[index];
-            console.log(`Uploading ${file.name} to:`, urlData.uploadUrl);
+          uploadUrls.map(
+            async (
+              urlData: { uploadUrl: string; imageUrl: string },
+              index: number
+            ) => {
+              const file = images[index];
+              console.log(`Uploading ${file.name} to:`, urlData.uploadUrl);
 
-            const uploadResponse = await fetch(urlData.uploadUrl, {
-              method: "PUT",
-              headers: { "Content-Type": file.type },
-              body: file,
-            });
+              const uploadResponse = await fetch(urlData.uploadUrl, {
+                method: "PUT",
+                headers: { "Content-Type": file.type },
+                body: file,
+              });
 
-            console.log(
-              `Upload response for ${file.name}:`,
-              uploadResponse.status,
-              uploadResponse.statusText
-            );
-
-            if (!uploadResponse.ok) {
-              throw new Error(
-                `Failed to upload ${file.name}: ${uploadResponse.status} ${uploadResponse.statusText}`
+              console.log(
+                `Upload response for ${file.name}:`,
+                uploadResponse.status,
+                uploadResponse.statusText
               );
-            }
 
-            return urlData.imageUrl;
-          })
+              if (!uploadResponse.ok) {
+                throw new Error(
+                  `Failed to upload ${file.name}: ${uploadResponse.status} ${uploadResponse.statusText}`
+                );
+              }
+
+              return urlData.imageUrl;
+            }
+          )
         );
 
         // Extract the final image URLs
-        imageUrls = uploadUrls.map((urlData: any) => urlData.imageUrl);
+        imageUrls = uploadUrls.map(
+          (urlData: { imageUrl: string }) => urlData.imageUrl
+        );
         console.log("Image keys being stored in DynamoDB:", imageUrls);
       }
 
@@ -359,18 +374,10 @@ export default function AddTrip() {
                   </div>
                 )}
 
-                <Suspense
-                  fallback={
-                    <div className="w-full h-[400px] bg-gray-100 flex items-center justify-center rounded-lg">
-                      <p className="text-gray-500">Loading map...</p>
-                    </div>
-                  }
-                >
-                  <MapPicker
-                    locations={locations}
-                    onLocationsChange={setLocations}
-                  />
-                </Suspense>
+                <MapPicker
+                  locations={locations}
+                  onLocationsChange={setLocations}
+                />
               </div>
             </div>
 

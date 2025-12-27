@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { Camera, MapPin, FileText, X, Upload, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
 import { processImageFiles, isHeicFile } from "@/utils/imageConversion";
 import type { LocationPin } from "@/app/components/mapPicker";
+import dynamic from "next/dynamic";
 
-const MapPicker = lazy(() => import("@/app/components/mapPicker"));
+const MapPicker = dynamic(() => import("@/app/components/mapPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] bg-gray-100 flex items-center justify-center rounded-lg">
+      <p className="text-gray-500">Loading map...</p>
+    </div>
+  ),
+});
 
 interface Trip {
   TripID: string;
@@ -73,8 +81,10 @@ export default function UpdateTrip() {
       }
 
       setLoading(false);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -95,7 +105,7 @@ export default function UpdateTrip() {
           const urlObj = new URL(key);
           // Remove leading slash from pathname
           return urlObj.pathname.substring(1);
-        } catch (urlErr) {
+        } catch {
           // Fallback: try regex extraction
           const match = key.match(/amazonaws\.com\/([^?]+)/);
           if (match) {
@@ -122,8 +132,8 @@ export default function UpdateTrip() {
 
       // Extract presigned URLs from the response
       const urls = data.imageUrls
-        .filter((item: any) => item.presignedUrl)
-        .map((item: any) => item.presignedUrl);
+        .filter((item: { presignedUrl?: string }) => item.presignedUrl)
+        .map((item: { presignedUrl: string }) => item.presignedUrl);
 
       setImageUrls(urls);
     } catch (err) {
@@ -215,32 +225,39 @@ export default function UpdateTrip() {
 
         // Step 2: Upload all new images to S3 in parallel
         await Promise.all(
-          uploadUrls.map(async (urlData: any, index: number) => {
-            const file = images[index];
-            console.log(`Uploading ${file.name} to:`, urlData.uploadUrl);
+          uploadUrls.map(
+            async (
+              urlData: { uploadUrl: string; imageUrl: string },
+              index: number
+            ) => {
+              const file = images[index];
+              console.log(`Uploading ${file.name} to:`, urlData.uploadUrl);
 
-            const uploadResponse = await fetch(urlData.uploadUrl, {
-              method: "PUT",
-              headers: { "Content-Type": file.type },
-              body: file,
-            });
+              const uploadResponse = await fetch(urlData.uploadUrl, {
+                method: "PUT",
+                headers: { "Content-Type": file.type },
+                body: file,
+              });
 
-            console.log(
-              `Upload response for ${file.name}:`,
-              uploadResponse.status,
-              uploadResponse.statusText
-            );
-
-            if (!uploadResponse.ok) {
-              throw new Error(
-                `Failed to upload ${file.name}: ${uploadResponse.status} ${uploadResponse.statusText}`
+              console.log(
+                `Upload response for ${file.name}:`,
+                uploadResponse.status,
+                uploadResponse.statusText
               );
+
+              if (!uploadResponse.ok) {
+                throw new Error(
+                  `Failed to upload ${file.name}: ${uploadResponse.status} ${uploadResponse.statusText}`
+                );
+              }
             }
-          })
+          )
         );
 
         // Extract new image URLs and append to existing ones
-        const newImageUrls = uploadUrls.map((urlData: any) => urlData.imageUrl);
+        const newImageUrls = uploadUrls.map(
+          (urlData: { imageUrl: string }) => urlData.imageUrl
+        );
         finalImageUrls = [...finalImageUrls, ...newImageUrls];
         console.log("Image keys being stored in DynamoDB:", finalImageUrls);
       }
@@ -457,18 +474,10 @@ export default function UpdateTrip() {
                   </div>
                 )}
 
-                <Suspense
-                  fallback={
-                    <div className="w-full h-[400px] bg-gray-100 flex items-center justify-center rounded-lg">
-                      <p className="text-gray-500">Loading map...</p>
-                    </div>
-                  }
-                >
-                  <MapPicker
-                    locations={locations}
-                    onLocationsChange={setLocations}
-                  />
-                </Suspense>
+                <MapPicker
+                  locations={locations}
+                  onLocationsChange={setLocations}
+                />
               </div>
             </div>
 

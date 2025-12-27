@@ -110,8 +110,9 @@ export default function TripDetails() {
       if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
 
       router.push("/trips");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -137,8 +138,9 @@ export default function TripDetails() {
       if (data.ImageUrls && data.ImageUrls.length > 0) {
         setImageUrls(data.ImageUrls);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import {
 import L from "leaflet";
 
 // Fix Leaflet icon issue with webpack
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -80,7 +81,9 @@ export default function MapPicker({
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    // Set mounted state after initial render to avoid SSR issues
+    const timer = setTimeout(() => setIsMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleLocationAdd = (lat: number, lng: number) => {
