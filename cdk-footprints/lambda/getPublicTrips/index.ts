@@ -1,5 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
@@ -10,9 +10,9 @@ const s3Client = new S3Client({region: process.env.AWS_REGION})
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
-        const command = new QueryCommand({
+        const command = new ScanCommand({
             TableName: process.env.TABLE_NAME,
-            KeyConditionExpression: "Visibility = :v",
+            FilterExpression: "Visibility = :v",
             ExpressionAttributeValues: {":v": "public"}
         })
 

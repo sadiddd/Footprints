@@ -20,11 +20,8 @@ export default function Trips() {
   useEffect(() => {
     const fetchTrips = async () => {
       try {
-        const currentUser = await getCurrentUser();
-        const userId = currentUser.userId;
-
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/Trips?userId=${userId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/public-trips`
         );
 
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
