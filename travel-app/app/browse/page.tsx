@@ -8,14 +8,12 @@ import {
   Lock as LockIcon,
   UnlockIcon,
 } from "lucide-react";
-import { getCurrentUser } from "aws-amplify/auth";
 import Link from "next/link";
 
 export default function Trips() {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [images, setImages] = useState<File[]>([]);
 
   useEffect(() => {
     const fetchTrips = async () => {
@@ -76,7 +74,7 @@ export default function Trips() {
               {trips.map((trip) => (
                 <Link
                   key={trip.TripID}
-                  href={`/trips/${trip.TripID}`}
+                  href={`/browse/${trip.TripID}`}
                   className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer hover:-translate-y-2 border border-base-300"
                 >
                   <figure className="relative h-64 overflow-hidden">
@@ -148,14 +146,14 @@ export default function Trips() {
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                   <Plus className="h-10 w-10 text-primary" />
                 </div>
-                <h3 className="card-title text-2xl font-serif">No trips yet</h3>
-                <p className="text-base-content/70">
-                  Start your journey by creating your first trip journal
-                </p>
+                <h3 className="card-title text-2xl font-serif">
+                  No public trips yet
+                </h3>
+                <p className="text-base-content/70">Be the first!</p>
                 <Link href="/trips/add">
                   <button className="btn btn-accent btn-lg gap-2 mt-4">
                     <Plus className="h-5 w-5" />
-                    Create Your First Trip
+                    Create a Trip
                   </button>
                 </Link>
               </div>
