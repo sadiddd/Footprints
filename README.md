@@ -5,4 +5,4 @@ Frontend: Next.js + DaisyUI + TailwindCSS
 Backend: AWS API Gateway + AWS Lambda  
 Database: AWS DynamoDB  
 File Storage: AWS S3  
-Map API:
+Map API: Leaflet
