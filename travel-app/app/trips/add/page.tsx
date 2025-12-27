@@ -8,7 +8,6 @@ import {
   X,
   Upload,
   Trash2,
-  Edit2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";

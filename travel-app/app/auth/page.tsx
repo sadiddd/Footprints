@@ -1,13 +1,6 @@
 "use client";
 
-import { Authenticator } from "@aws-amplify/ui-react";
-import {
-  signIn,
-  signUp,
-  signOut,
-  getCurrentUser,
-  confirmSignUp,
-} from "aws-amplify/auth";
+import { signIn, signUp, signOut, confirmSignUp } from "aws-amplify/auth";
 import "@aws-amplify/ui-react/styles.css";
 
 import { Footprints } from "lucide-react";
