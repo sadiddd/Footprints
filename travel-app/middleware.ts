@@ -20,5 +20,6 @@ export const config = {
   matcher: [
     "/trips/:path*",
     "/profile/:path*",
+    "/browse/:path*",
   ],
 };
