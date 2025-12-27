@@ -1,5 +1,16 @@
 "use client";
 
+function formatDate(dateString?: string) {
+  if (!dateString) return "";
+  const [year, month, day] = dateString.split("-");
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 import { useState, useEffect } from "react";
 import {
   Plus,
@@ -135,11 +146,9 @@ export default function Trips() {
                       <div className="flex items-center gap-2 text-sm text-base-content/70">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          {trip.StartDate &&
-                            new Date(trip.StartDate).toLocaleDateString()}
+                          {trip.StartDate && formatDate(trip.StartDate)}
                           {trip.StartDate && trip.EndDate && " - "}
-                          {trip.EndDate &&
-                            new Date(trip.EndDate).toLocaleDateString()}
+                          {trip.EndDate && formatDate(trip.EndDate)}
                         </span>
                       </div>
                     )}
