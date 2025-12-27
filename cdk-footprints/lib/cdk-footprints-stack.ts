@@ -110,6 +110,7 @@ export class CdkFootprintsStack extends cdk.Stack {
     tripsTable.grantWriteData(addTripLambda)
     tripsTable.grantReadData(getTripsLambda)
     tripsTable.grantReadData(getTripDetailsLambda)
+    tripsTable.grantReadData(getPublicTripsLambda)
     tripsTable.grantReadWriteData(updateTripLambda)
     tripsTable.grantReadWriteData(deleteTripLambda)
 
@@ -117,6 +118,7 @@ export class CdkFootprintsStack extends cdk.Stack {
     photosBucket.grantRead(addTripLambda)
     photosBucket.grantRead(getTripsLambda)
     photosBucket.grantRead(getTripDetailsLambda)
+    photosBucket.grantRead(getPublicTripsLambda)
     photosBucket.grantRead(getImageUrlsLambda)
     photosBucket.grantPut(getUploadUrlsLambda)
     photosBucket.grantDelete(deleteTripLambda)
@@ -150,5 +152,9 @@ export class CdkFootprintsStack extends cdk.Stack {
     // Image URLs endpoint
     const imageUrls = api.root.addResource('image-urls')
     imageUrls.addMethod('POST', new apigateway.LambdaIntegration(getImageUrlsLambda))
+
+    // Public trips endpoint for browse page
+    const publicTrips = api.root.addResource('public-trips')
+    publicTrips.addMethod('GET', new apigateway.LambdaIntegration(getPublicTripsLambda))
   }
 }
