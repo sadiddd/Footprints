@@ -178,19 +178,24 @@ export default function Auth() {
             )}
 
             {isSignUp && (
-              <div>
-                <label className="label">
-                  <span className="label-text">Name</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered w-full"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
+              <>
+                <div className="mb-2 text-sm text-base-content/70">
+                  We'll send a code to verify your account
+                </div>
+                <div>
+                  <label className="label">
+                    <span className="label-text">Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
             )}
 
             <div>
