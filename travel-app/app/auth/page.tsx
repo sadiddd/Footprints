@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn, signUp, signOut, confirmSignUp } from "aws-amplify/auth";
+import { signIn, signUp, confirmSignUp } from "aws-amplify/auth";
 import "@aws-amplify/ui-react/styles.css";
 
 import { Footprints } from "lucide-react";
@@ -180,7 +180,7 @@ export default function Auth() {
             {isSignUp && (
               <>
                 <div className="mb-2 text-sm text-base-content/70">
-                  We'll send a code to verify your account
+                  We will send a code to verify your account
                 </div>
                 <div>
                   <label className="label">
