@@ -1,4 +1,4 @@
-This is Footprints, a travel journalling app that allows users to store photos, locations, and more for a trip they've had. Users can also share their trips by making them public, where other users will then be able to see them.  
+This is Footprints, a travel journalling app that allows users to store photos, locations, and more for a trip they've had. Users can also share their trips by making them public, where other users can access them. 
 Accessible at https://footprints-delta.vercel.app/
 
 Tech Stack:  
