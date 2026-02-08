@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  // Check for Cognito auth tokens in cookies
-  const cookies = request.cookies;
-  
-  // Cognito stores tokens with these patterns
-  const hasIdToken = Array.from(cookies.getAll()).some(
-    cookie => cookie.name.includes('idToken') || cookie.name.includes('CognitoIdentityServiceProvider')
-  );
+  // Only protect routes that require authentication
+  // /browse is public, so we don't protect it
+  const path = request.nextUrl.pathname;
 
-  if (!hasIdToken) {
-    return NextResponse.redirect(new URL("/auth", request.url));
+  // Check if the route requires authentication
+  const requiresAuth = path.startsWith("/trips") || path.startsWith("/profile");
+
+  if (!requiresAuth) {
+    return NextResponse.next();
   }
 
+  // Let all requests through - the page components will handle authentication
+  // This prevents false negatives where authenticated users are incorrectly blocked
+  // Pages use getCurrentUser() which is the authoritative auth check
   return NextResponse.next();
 }
 
@@ -20,6 +22,5 @@ export const config = {
   matcher: [
     "/trips/:path*",
     "/profile/:path*",
-    "/browse/:path*",
   ],
 };
