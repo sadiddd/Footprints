@@ -9,8 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useRouter, useParams } from "next/navigation";
-import { getCurrentUser } from "aws-amplify/auth";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { LocationPin } from "@/app/components/mapPicker";
@@ -37,7 +36,6 @@ interface Trip {
 }
 
 export default function TripDetails() {
-  const router = useRouter();
   const params = useParams();
   const tripId = params.id as string;
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -98,55 +96,58 @@ export default function TripDetails() {
     setCurrentIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this trip?")) return;
-
-    setLoading(true);
-    try {
-      const currentUser = await getCurrentUser();
-      const userId = currentUser.userId;
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/Trips`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          UserID: userId,
-          TripID: tripId,
-        }),
-      });
-
-      if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
-
-      router.push("/trips");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setError(errorMessage);
-      setLoading(false);
-    }
-  };
-
-  const handleUpdate = async () => {
-    router.push(`/trips/${tripId}/update`);
-  };
-
   const fetchTrip = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const currentUser = await getCurrentUser();
-      const userId = currentUser.userId;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/Trips/${tripId}?userId=${userId}`
-      );
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+      if (!apiBase) throw new Error("Missing NEXT_PUBLIC_API_URL");
 
-      if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+      let res = await fetch(`${apiBase}/Trips/${tripId}`);
 
-      const data = await res.json();
-      setTrip(data);
+      // Backwards-compatible fallback: if the API still requires userId for /Trips/{id},
+      // fetch from /public-trips and pick the matching trip.
+      if (res.status === 400) {
+        const listRes = await fetch(`${apiBase}/public-trips`);
+        if (!listRes.ok) throw new Error(`HTTP Error ${listRes.status}`);
+        const trips = await listRes.json();
+        const found = Array.isArray(trips)
+          ? trips.find((t: any) => t?.TripID === tripId)
+          : null;
 
-      // Images come as presigned URLs from the API
-      if (data.ImageUrls && data.ImageUrls.length > 0) {
-        setImageUrls(data.ImageUrls);
+        if (!found) throw new Error("Trip not found");
+
+        setTrip(found);
+
+        if (found.ImageUrls && found.ImageUrls.length > 0) {
+          // Ensure all images are presigned (list endpoint only presigns the first image).
+          const urlRes = await fetch(`${apiBase}/image-urls`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrls: found.ImageUrls }),
+          });
+
+          if (urlRes.ok) {
+            const signed = await urlRes.json();
+            const urls = (signed.imageUrls ?? []).map(
+              (x: { presignedUrl?: string; originalUrl?: string }) =>
+                x.presignedUrl ?? x.originalUrl
+            );
+            setImageUrls(urls);
+          } else {
+            setImageUrls(found.ImageUrls);
+          }
+        }
+      } else {
+        if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+        const data = await res.json();
+        setTrip(data);
+
+        // Images come as presigned URLs from the API
+        if (data.ImageUrls && data.ImageUrls.length > 0) {
+          setImageUrls(data.ImageUrls);
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
@@ -173,10 +174,10 @@ export default function TripDetails() {
         <div className="text-center">
           <p className="text-red-600">Error: {error}</p>
           <Link
-            href="/trips"
+            href="/browse"
             className="mt-4 inline-block text-terracotta hover:underline"
           >
-            Back to trips
+            Back to browse
           </Link>
         </div>
       </div>
@@ -189,10 +190,10 @@ export default function TripDetails() {
         <div className="text-center">
           <p className="text-muted-foreground">Trip not found</p>
           <Link
-            href="/trips"
+            href="/browse"
             className="mt-4 inline-block text-terracotta hover:underline"
           >
-            Back to trips
+            Back to browse
           </Link>
         </div>
       </div>
@@ -205,11 +206,11 @@ export default function TripDetails() {
         {/* Back button */}
         <div className="container mx-auto px-4 py-6">
           <Link
-            href="/trips"
+            href="/browse"
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-            Back to journal
+            Back to browse
           </Link>
         </div>
 

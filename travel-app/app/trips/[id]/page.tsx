@@ -49,6 +49,7 @@ export default function TripDetails() {
   const params = useParams();
   const tripId = params.id as string;
   const [trip, setTrip] = useState<Trip | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -140,12 +141,83 @@ export default function TripDetails() {
   };
 
   const fetchTrip = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const currentUser = await getCurrentUser();
-      const userId = currentUser.userId;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/Trips/${tripId}?userId=${userId}`
-      );
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+      if (!apiBase) throw new Error("Missing NEXT_PUBLIC_API_URL");
+
+      const fetchPublicTripFromList = async () => {
+        const listRes = await fetch(`${apiBase}/public-trips`);
+        if (!listRes.ok) throw new Error(`HTTP Error ${listRes.status}`);
+        const trips = await listRes.json();
+        const found = Array.isArray(trips)
+          ? trips.find((t: any) => t?.TripID === tripId)
+          : null;
+
+        if (!found) throw new Error("Trip not found");
+
+        setTrip(found);
+        setCanEdit(false);
+
+        if (found.ImageUrls && found.ImageUrls.length > 0) {
+          // Ensure all images are presigned (list endpoint only presigns the first image).
+          const urlRes = await fetch(`${apiBase}/image-urls`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrls: found.ImageUrls }),
+          });
+
+          if (urlRes.ok) {
+            const signed = await urlRes.json();
+            const urls = (signed.imageUrls ?? []).map(
+              (x: { presignedUrl?: string; originalUrl?: string }) =>
+                x.presignedUrl ?? x.originalUrl
+            );
+            setImageUrls(urls);
+          } else {
+            setImageUrls(found.ImageUrls);
+          }
+        }
+      };
+
+      let userId: string | undefined;
+      try {
+        const currentUser = await getCurrentUser();
+        userId = currentUser.userId;
+      } catch {
+        userId = undefined;
+      }
+
+      const ownerUrl = userId
+        ? `${apiBase}/Trips/${tripId}?userId=${encodeURIComponent(userId)}`
+        : null;
+      const publicUrl = `${apiBase}/Trips/${tripId}`;
+
+      let res: Response;
+      if (ownerUrl) {
+        res = await fetch(ownerUrl);
+        if (res.status === 404) {
+          // Not your trip (or not found for this user); retry public access.
+          res = await fetch(publicUrl);
+          setCanEdit(false);
+          if (res.status === 400) {
+            // Backwards-compatible fallback if /Trips/{id} still requires userId.
+            await fetchPublicTripFromList();
+            return;
+          }
+        } else {
+          setCanEdit(res.ok);
+        }
+      } else {
+        res = await fetch(publicUrl);
+        setCanEdit(false);
+        if (res.status === 400) {
+          // Backwards-compatible fallback if /Trips/{id} still requires userId.
+          await fetchPublicTripFromList();
+          return;
+        }
+      }
 
       if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
 
@@ -353,22 +425,24 @@ export default function TripDetails() {
             )}
 
             {/* Action buttons */}
-            <div className="mt-8 pt-6 border-t border-paper-dark flex items-center justify-between">
-              <button
-                className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group"
-                onClick={() => handleUpdate()}
-              >
-                <Pencil className="w-5 h-5 transition-transform group-hover:scale-110" />
-                <span className="font-sans text-sm">Update Trip</span>
-              </button>
-              <button
-                className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group"
-                onClick={() => handleDelete()}
-              >
-                <Trash className="w-5 h-5 transition-transform group-hover:scale-110" />
-                <span className="font-sans text-sm">Delete Trip</span>
-              </button>
-            </div>
+            {canEdit && (
+              <div className="mt-8 pt-6 border-t border-paper-dark flex items-center justify-between">
+                <button
+                  className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group"
+                  onClick={() => handleUpdate()}
+                >
+                  <Pencil className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="font-sans text-sm">Update Trip</span>
+                </button>
+                <button
+                  className="flex items-center gap-2 text-muted-foreground hover:text-terracotta transition-colors group"
+                  onClick={() => handleDelete()}
+                >
+                  <Trash className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="font-sans text-sm">Delete Trip</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </main>
