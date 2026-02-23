@@ -44,6 +44,20 @@ interface Trip {
   Locations?: LocationPin[];
 }
 
+function isTrip(value: unknown): value is Trip {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.TripID === "string" &&
+    typeof v.Title === "string" &&
+    typeof v.Location === "string" &&
+    typeof v.Description === "string" &&
+    typeof v.StartDate === "string" &&
+    typeof v.EndDate === "string" &&
+    typeof v.Visibility === "string"
+  );
+}
+
 export default function TripDetails() {
   const router = useRouter();
   const params = useParams();
@@ -150,9 +164,11 @@ export default function TripDetails() {
       const fetchPublicTripFromList = async () => {
         const listRes = await fetch(`${apiBase}/public-trips`);
         if (!listRes.ok) throw new Error(`HTTP Error ${listRes.status}`);
-        const trips = await listRes.json();
-        const found = Array.isArray(trips)
-          ? trips.find((t: any) => t?.TripID === tripId)
+        const tripsJson: unknown = await listRes.json();
+        const found = Array.isArray(tripsJson)
+          ? (tripsJson as unknown[]).find(
+              (t): t is Trip => isTrip(t) && t.TripID === tripId
+            )
           : null;
 
         if (!found) throw new Error("Trip not found");
