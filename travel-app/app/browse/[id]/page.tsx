@@ -100,10 +100,13 @@ export default function TripDetails() {
     setLoading(true);
     setError("");
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(
+        /\/+$/,
+        "",
+      );
       if (!apiBase) throw new Error("Missing NEXT_PUBLIC_API_URL");
 
-      let res = await fetch(`${apiBase}/Trips/${tripId}`);
+      const res = await fetch(`${apiBase}/Trips/${tripId}`);
 
       // Backwards-compatible fallback: if the API still requires userId for /Trips/{id},
       // fetch from /public-trips and pick the matching trip.
@@ -131,7 +134,7 @@ export default function TripDetails() {
             const signed = await urlRes.json();
             const urls = (signed.imageUrls ?? []).map(
               (x: { presignedUrl?: string; originalUrl?: string }) =>
-                x.presignedUrl ?? x.originalUrl
+                x.presignedUrl ?? x.originalUrl,
             );
             setImageUrls(urls);
           } else {
@@ -327,13 +330,13 @@ export default function TripDetails() {
                             console.error(
                               `Error loading image ${index}:`,
                               imageUrl,
-                              e
+                              e,
                             );
                           }}
                           onLoad={() => {
                             console.log(
                               `Image ${index} loaded successfully:`,
-                              imageUrl
+                              imageUrl,
                             );
                           }}
                         />
