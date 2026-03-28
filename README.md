@@ -4,7 +4,7 @@ Accessible at https://footprints-delta.vercel.app/
 Tech Stack:  
 Frontend: Next.js + DaisyUI + TailwindCSS  
 Backend: AWS API Gateway + AWS Lambda  
-Authentication: AWS Cognito
+Authentication: AWS Cognito  
 Database: AWS DynamoDB  
 File Storage: AWS S3  
 Map API: Leaflet
