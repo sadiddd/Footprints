@@ -54,11 +54,7 @@ export default function UpdateTrip() {
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<LocationPin[]>([]);
 
-  useEffect(() => {
-    fetchTrip();
-  }, [tripId]);
-
-  const fetchTrip = async () => {
+  async function fetchTrip() {
     try {
       const currentUser = await getCurrentUser();
       const userId = currentUser.userId;
@@ -77,7 +73,54 @@ export default function UpdateTrip() {
       }
 
       if (data.ImageUrls && data.ImageUrls.length > 0) {
-        await fetchImageUrls(data.ImageUrls);
+        setImagesLoading(true);
+        try {
+          console.log("Raw keys from trip data:", data.ImageUrls);
+
+          const s3Keys = data.ImageUrls.map((key: string) => {
+            if (!key.startsWith("http://") && !key.startsWith("https://")) {
+              return key;
+            }
+
+            try {
+              const urlObj = new URL(key);
+              return urlObj.pathname.substring(1);
+            } catch {
+              const match = key.match(/amazonaws\.com\/([^?]+)/);
+              if (match) {
+                return decodeURIComponent(match[1]);
+              }
+              console.error("Could not extract S3 key from:", key);
+              return key;
+            }
+          });
+
+          const imageUrlsRes = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/image-urls`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                imageUrls: s3Keys,
+              }),
+            }
+          );
+
+          if (!imageUrlsRes.ok) throw new Error("Failed to fetch image URLs");
+
+          const imageUrlsData = await imageUrlsRes.json();
+          const urls = imageUrlsData.imageUrls
+            .filter((item: { presignedUrl?: string }) => item.presignedUrl)
+            .map((item: { presignedUrl: string }) => item.presignedUrl);
+
+          setImageUrls(urls);
+        } catch (imageErr) {
+          console.error("Error fetching image URLs:", imageErr);
+        } finally {
+          setImagesLoading(false);
+        }
       }
 
       setLoading(false);
@@ -87,61 +130,15 @@ export default function UpdateTrip() {
       setError(errorMessage);
       setLoading(false);
     }
-  };
+  }
 
-  const fetchImageUrls = async (keys: string[]) => {
-    setImagesLoading(true);
-    try {
-      console.log("Raw keys from trip data:", keys);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchTrip();
+    }, 0);
 
-      // Extract just the S3 key from the stored URLs
-      // If they're full URLs, extract the key; if they're already keys, use as-is
-      const s3Keys = keys.map((key) => {
-        if (!key.startsWith("http://") && !key.startsWith("https://")) {
-          return key;
-        }
-
-        try {
-          const urlObj = new URL(key);
-          // Remove leading slash from pathname
-          return urlObj.pathname.substring(1);
-        } catch {
-          // Fallback: try regex extraction
-          const match = key.match(/amazonaws\.com\/([^?]+)/);
-          if (match) {
-            return decodeURIComponent(match[1]);
-          }
-          console.error("Could not extract S3 key from:", key);
-          return key;
-        }
-      });
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image-urls`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageUrls: s3Keys,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to fetch image URLs");
-
-      const data = await res.json();
-
-      // Extract presigned URLs from the response
-      const urls = data.imageUrls
-        .filter((item: { presignedUrl?: string }) => item.presignedUrl)
-        .map((item: { presignedUrl: string }) => item.presignedUrl);
-
-      setImageUrls(urls);
-    } catch (err) {
-      console.error("Error fetching image URLs:", err);
-    } finally {
-      setImagesLoading(false);
-    }
-  };
+    return () => clearTimeout(timer);
+  }, [tripId]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

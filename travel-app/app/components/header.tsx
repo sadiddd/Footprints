@@ -21,23 +21,7 @@ export default function Header() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    checkUser();
-
-    // Listen for auth events from Amplify Hub
-    const hubListener = Hub.listen("auth", ({ payload }) => {
-      switch (payload.event) {
-        case "signedIn":
-        case "signedOut":
-          checkUser();
-          break;
-      }
-    });
-
-    return () => hubListener();
-  }, []);
-
-  const checkUser = async () => {
+  async function checkUser() {
     try {
       const currentUser = await getCurrentUser();
       const attributes = await fetchUserAttributes();
@@ -50,7 +34,7 @@ export default function Header() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleSignOut = async () => {
     try {
@@ -61,6 +45,27 @@ export default function Header() {
       console.error("Error signing out:", error);
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void checkUser();
+    }, 0);
+
+    // Listen for auth events from Amplify Hub
+    const hubListener = Hub.listen("auth", ({ payload }) => {
+      switch (payload.event) {
+        case "signedIn":
+        case "signedOut":
+          checkUser();
+          break;
+      }
+    });
+
+    return () => {
+      clearTimeout(timer);
+      hubListener();
+    };
+  }, []);
 
   return (
     <nav className="fixed top-0 w-full z-[1000] bg-neutral backdrop-blur-sm border-b border-primary-content/20">

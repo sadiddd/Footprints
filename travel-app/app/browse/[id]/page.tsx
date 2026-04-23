@@ -102,15 +102,15 @@ export default function TripDetails() {
     setIsViewerOpen(false);
   };
 
-  const goToNext = () => {
+  function goToNext() {
     setCurrentIndex((prev) => (prev + 1) % imageUrls.length);
-  };
+  }
 
-  const goToPrevious = () => {
+  function goToPrevious() {
     setCurrentIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
-  };
+  }
 
-  const fetchTrip = async () => {
+  async function fetchTrip() {
     setLoading(true);
     setError("");
     try {
@@ -174,7 +174,7 @@ export default function TripDetails() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (loading) {
     return (

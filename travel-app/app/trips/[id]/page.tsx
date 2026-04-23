@@ -113,13 +113,13 @@ export default function TripDetails() {
     setIsViewerOpen(false);
   };
 
-  const goToNext = () => {
+  function goToNext() {
     setCurrentIndex((prev) => (prev + 1) % imageUrls.length);
-  };
+  }
 
-  const goToPrevious = () => {
+  function goToPrevious() {
     setCurrentIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
-  };
+  }
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this trip?")) return;
@@ -154,7 +154,7 @@ export default function TripDetails() {
     router.push(`/trips/${tripId}/update`);
   };
 
-  const fetchTrip = async () => {
+  async function fetchTrip() {
     setLoading(true);
     setError("");
     try {
@@ -250,7 +250,7 @@ export default function TripDetails() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (loading) {
     return (
