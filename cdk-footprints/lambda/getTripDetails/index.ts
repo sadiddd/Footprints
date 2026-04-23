@@ -1,5 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
-import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
@@ -13,27 +13,47 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         const userId = event.queryStringParameters?.userId
         const tripId = event.pathParameters?.id
 
-        if (!userId || !tripId) {
+        if (!tripId) {
             return {
                 statusCode: 400,
                 headers: {
                     'Access-Control-Allow-Origin': '*',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({message: "Missing UserID or TripID parameter"})
+                body: JSON.stringify({message: "Missing TripID parameter"})
             }
         }
-        const command = new GetCommand({
-            TableName: process.env.TABLE_NAME,
-            Key: {
-                UserID: userId,
-                TripID: tripId
-            }
-        })
 
-        const result = await ddbDocClient.send(command)
+        // If a userId is provided, fetch the trip via primary key (fast path).
+        // If not, allow fetching public trips by TripID (slow path via scan).
+        let trip: any | undefined;
 
-        if (!result.Item) {
+        if (userId) {
+            const command = new GetCommand({
+                TableName: process.env.TABLE_NAME,
+                Key: {
+                    UserID: userId,
+                    TripID: tripId
+                }
+            })
+
+            const result = await ddbDocClient.send(command)
+            trip = result.Item
+        } else {
+            const command = new ScanCommand({
+                TableName: process.env.TABLE_NAME,
+                FilterExpression: "TripID = :tid AND Visibility = :v",
+                ExpressionAttributeValues: {
+                    ":tid": tripId,
+                    ":v": "public",
+                },
+            })
+
+            const result = await ddbDocClient.send(command)
+            trip = result.Items?.[0]
+        }
+
+        if (!trip) {
             return {
                 statusCode: 404,
                 headers: {
@@ -43,8 +63,6 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
                 body: JSON.stringify({message: "Trip not found"})
             }
         }
-
-        const trip = result.Item
 
         if (trip.ImageUrls && trip.ImageUrls.length > 0) {
             const presignedUrls = await Promise.all(

@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 export class CdkFootprintsStack extends cdk.Stack {
@@ -31,13 +32,48 @@ export class CdkFootprintsStack extends cdk.Stack {
       }]
     })
 
+    // VPC for EC2 and Lambdas
+    const vpc = new ec2.Vpc(this, 'Vpc', {
+      maxAzs: 2,
+      natGateways: 1,
+    });
+
+    // Security Group for AI service
+    const aiSG = new ec2.SecurityGroup(this, 'AISecurityGroup', {
+      vpc,
+      description: 'Security group for AI service',
+      allowAllOutbound: true,
+    });
+    
+    // Allowing traffic from port 8000 (FastAPI)
+    aiSG.addIngressRule(
+      ec2.Peer.ipv4(vpc.vpcCidrBlock),
+      ec2.Port.tcp(8000),
+      'Allow VPC internal traffic on port 8000'
+    )
+
+    // EC2 Instance for AI service
+    const aiInstance = new ec2.Instance(this, 'AIServiceInstance', {
+      vpc,
+      instanceType:ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.LARGE, // 8GB RAM
+      ),
+      machineImage: ec2.MachineImage.latestAmazonLinux2023(),
+      securityGroup: aiSG,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+    })
+
     // Lambda Function for addTrip
     const addTripLambda = new NodejsFunction(this, 'addTripLambda', {
       entry: 'lambda/addTrip/index.ts',
       handler: 'handler',
       environment: {
         TABLE_NAME: tripsTable.tableName,
-      }
+      },
+      vpc,
     })
 
     // Lambda Function for getTrip
@@ -47,7 +83,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       environment: {
         TABLE_NAME: tripsTable.tableName,
         BUCKET_NAME: photosBucket.bucketName,
-      }
+      },
+      vpc,
     })
 
     // Lambda Function for getTripDetails
@@ -57,7 +94,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       environment: {
         TABLE_NAME: tripsTable.tableName,
         BUCKET_NAME: photosBucket.bucketName,
-      }
+      },
+      vpc,
     })
 
     // Lambda Function for getPublicTrips
@@ -67,7 +105,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       environment: {
         TABLE_NAME: tripsTable.tableName,
         BUCKET_NAME: photosBucket.bucketName,
-      }
+      },
+      vpc,
     })
 
     // Lambda Function for getUploadUrls
@@ -76,7 +115,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         BUCKET_NAME: photosBucket.bucketName,
-      }
+      },
+      vpc,
     })
 
     // Lambda Function for getImageUrls
@@ -85,7 +125,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         BUCKET_NAME: photosBucket.bucketName,
-      }
+      },
+      vpc,
     })
 
     // Lambda Function for updateTrip
@@ -94,7 +135,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         TABLE_NAME: tripsTable.tableName,
-      }
+      },
+      vpc,
     })
 
     // Lambda Function for deleteTrip
@@ -103,7 +145,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         TABLE_NAME: tripsTable.tableName,
-      }
+      },
+      vpc,
     })
 
     // Grant permissions for DynamoDB
