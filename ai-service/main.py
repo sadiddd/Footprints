@@ -11,7 +11,7 @@ app = FastAPI()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
-LLM_MODEL = os.getenv("LLM_MODEL", "mistral")
+LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
 
 client = chromadb.PersistentClient(path="./chroma_data")
 collection = client.get_or_create_collection("trips")
@@ -80,6 +80,9 @@ def call_llm(prompt: str) -> str:
                 "model": LLM_MODEL,
                 "prompt": prompt,
                 "stream": False,
+                "options": {
+                    "num_predict": 300
+                }
             },
             timeout=120,
         )
