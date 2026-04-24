@@ -98,21 +98,30 @@ def call_llm(prompt: str) -> str:
             detail=f"Could not connect to Ollama LLM service: {str(e)}"
         )
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.post("/embed")
 def embed_trip(req: EmbedRequest):
+    trip_text = build_trip_text(req)
+    embedding = get_embedding(trip_text)
 
-    try:
-        response = requests.post(
-            f"{OLLAMA_URL}/api/embeddings",
-            json={"model": "nomic_embed_text", "prompt": req.text}
-        )
-        embedding = response.json()["embedding"]
-    except Exception as e:
-        raise Exception(f"Error embedding trip: {e}")
-
-    collection.add(
+    collection.upsert(
         ids=[req.tripId],
         embeddings=[embedding],
-        metadatas=[{"userId": req.userId}]
+        documents=[trip_text],
+        metadatas=[
+            {
+                "userId": req.userId,
+                "title": req.title,
+                "location": req.location,
+            }
+        ],
     )
-    return {"message": "Trip embedded successfully"}
+
+    return {
+        "status": "ok",
+        "message": "Trip embedded successfully",
+        "tripId": req.tripId,
+    }
