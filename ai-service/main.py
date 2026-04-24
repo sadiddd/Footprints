@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import requests
 import chromadb
+import os
+
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
 app = FastAPI()
 
@@ -19,7 +22,7 @@ def embed_trip(req: EmbedRequest):
 
     try:
         response = requests.post(
-            "http://localhost:11434/api/embeddings",
+            f"{OLLAMA_URL}/api/embeddings",
             json={"model": "nomic_embed_text", "prompt": req.text}
         )
         embedding = response.json()["embedding"]
