@@ -1,21 +1,33 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from typing import Optional, List
 import requests
 import chromadb
 import os
-
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+import json
+import numpy as np
 
 app = FastAPI()
 
-# Initialize ChromaDB
-client = chromadb.PersistentClient(path="chroma_db")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic_embed_text")
+LLM_MODEL = os.getenv("LLM_MODEL", "mistral")
+
+client = chromadb.PersistentClient(path="./chroma_data")
 collection = client.get_or_create_collection("trips")
 
-class EmbedRequest(BaseModel): # maybe add more fields later
+class EmbedRequest(BaseModel):
     tripId: str
     userId: str
-    text: str
+    title: str
+    location: str
+    description: str
+    photoTags: Optional[List[str]] = Field(default_factory=list) 
+
+class RecommendRequest(BaseModel):
+    userId: str
+    numSimilar: int = 3
+    numDifferent: int = 2
 
 @app.post("/embed")
 def embed_trip(req: EmbedRequest):
