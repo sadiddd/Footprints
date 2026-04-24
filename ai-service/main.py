@@ -29,6 +29,16 @@ class RecommendRequest(BaseModel):
     numSimilar: int = 3
     numDifferent: int = 2
 
+def build_trip_text(req: EmbedRequest) -> str:
+    photo_text = ", ".join(req.photoTags or [])
+    
+    return f"""
+        Title: {req.title}
+        Location: {req.location}
+        Description: {req.description}
+        Photo Tags: {photo_text}
+    """.strip()
+
 @app.post("/embed")
 def embed_trip(req: EmbedRequest):
 
