@@ -141,9 +141,9 @@ def recommend(req: RecommendRequest):
         )
 
     # get embeddings for user's trips
-    embeddings = results["embeddings"]
+    embeddings = results.get("embeddings")
 
-    if not embeddings:
+    if embeddings is None or len(embeddings) == 0:
         raise HTTPException(status_code=500, detail="No embeddings found for user")
 
     # calculate average embedding for user's trips
