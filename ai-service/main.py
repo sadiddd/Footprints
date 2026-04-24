@@ -10,7 +10,7 @@ import numpy as np
 app = FastAPI()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic_embed_text")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 LLM_MODEL = os.getenv("LLM_MODEL", "mistral")
 
 client = chromadb.PersistentClient(path="./chroma_data")
@@ -38,6 +38,39 @@ def build_trip_text(req: EmbedRequest) -> str:
         Description: {req.description}
         Photo Tags: {photo_text}
     """.strip()
+
+def get_embedding(text: str) -> List[float];
+    try:
+        response = requests.post(
+            f"{OLLAMA_URL}/api/embed",
+            json={
+                "model": EMBED_MODEL, 
+                "input": text,
+                },
+                timeout=60,
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Ollama embedding failed: {response.text}"
+            )
+
+        data = response.json()
+
+        if "embeddings" not in data or not data["embeddings"]:
+            raise HTTPException(
+                status_code=500,
+                detail="No embedding returned from Ollama"
+            )
+
+        return data["embeddings"][0]
+
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not connect to Ollama embedding service: {str(e)}"
+        )
 
 @app.post("/embed")
 def embed_trip(req: EmbedRequest):
