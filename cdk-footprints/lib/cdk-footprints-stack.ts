@@ -52,6 +52,13 @@ export class CdkFootprintsStack extends cdk.Stack {
       'Allow VPC internal traffic on port 8000'
     )
 
+    // Allowing traffic from port 22 (SSH)
+    aiSG.addIngressRule(
+      aiSG,
+      ec2.Port.tcp(22),
+      'Allow SSH traffic from EC2 Instance Connect Endpoint'
+    );
+
     // EC2 Instance for AI service
     const aiInstance = new ec2.Instance(this, 'AIServiceInstance', {
       vpc,
@@ -65,6 +72,13 @@ export class CdkFootprintsStack extends cdk.Stack {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
     })
+
+    // Instance Connect Endpoint for EC2
+    const ec2ConnectEndpoint = new ec2.CfnInstanceConnectEndpoint(this, 'Ec2ConnectEndpoint', {
+        subnetId: vpc.publicSubnets[0].subnetId,
+        securityGroupIds: [aiSG.securityGroupId],
+      }
+    );
 
     // Lambda Function for addTrip
     const addTripLambda = new NodejsFunction(this, 'addTripLambda', {
