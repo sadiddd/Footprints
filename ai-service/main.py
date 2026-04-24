@@ -39,7 +39,7 @@ def build_trip_text(req: EmbedRequest) -> str:
         Photo Tags: {photo_text}
     """.strip()
 
-def get_embedding(text: str) -> List[float];
+def get_embedding(text: str) -> List[float]:
     try:
         response = requests.post(
             f"{OLLAMA_URL}/api/embed",
@@ -70,6 +70,32 @@ def get_embedding(text: str) -> List[float];
         raise HTTPException(
             status_code=500,
             detail=f"Could not connect to Ollama embedding service: {str(e)}"
+        )
+
+def call_llm(prompt: str) -> str:
+    try:
+        response = requests.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": LLM_MODEL,
+                "prompt": prompt,
+                "stream": False,
+            },
+            timeout=120,
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Ollama LLM failed: {response.text}"
+            )
+        
+        return response.json().get("response", "")
+
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not connect to Ollama LLM service: {str(e)}"
         )
 
 @app.post("/embed")
