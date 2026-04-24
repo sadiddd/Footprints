@@ -71,6 +71,12 @@ export class CdkFootprintsStack extends cdk.Stack {
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
+      blockDevices: [{
+        deviceName: '/dev/xvda',
+        volume: ec2.BlockDeviceVolume.ebs(30, {
+          encrypted: true,
+        }),
+      }],
     })
 
     // Instance Connect Endpoint for EC2
