@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from openai import OpenAI
 import requests
 import chromadb
 import os
@@ -11,7 +12,10 @@ app = FastAPI()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
-LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 client = chromadb.PersistentClient(path="./chroma_data")
 collection = client.get_or_create_collection("trips")
@@ -74,31 +78,22 @@ def get_embedding(text: str) -> List[float]:
 
 def call_llm(prompt: str) -> str:
     try:
-        response = requests.post(
-            f"{OLLAMA_URL}/api/generate",
-            json={
-                "model": LLM_MODEL,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "num_predict": 300
+        response = openai_client.responses.create(
+            model=OPENAI_MODEL,
+            input=prompt,
+            text={
+                "format": {
+                    "type": "json_object"
                 }
             },
-            timeout=120,
         )
 
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Ollama LLM failed: {response.text}"
-            )
-        
-        return response.json().get("response", "")
+        return response.output_text
 
-    except requests.RequestException as e:
+    except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Could not connect to Ollama LLM service: {str(e)}"
+            detail=f"OpenAI LLM request failed: {str(e)}",
         )
 
 @app.get("/health")
