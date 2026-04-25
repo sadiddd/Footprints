@@ -230,13 +230,17 @@ export class CdkFootprintsStack extends cdk.Stack {
       }
     })
 
-    // Resources
+    // Resources for trips
     const trips = api.root.addResource('Trips')
     trips.addMethod('POST', new apigateway.LambdaIntegration(addTripLambda))
     trips.addMethod('GET', new apigateway.LambdaIntegration(getTripsLambda))
     trips.addMethod('PUT', new apigateway.LambdaIntegration(updateTripLambda))
     trips.addMethod('DELETE', new apigateway.LambdaIntegration(deleteTripLambda))
     
+    // Resources for recommendations
+    const recommendations = api.root.addResource('recommendations')
+    recommendations.addMethod('POST', new apigateway.LambdaIntegration(getRecommendationsLambda))
+
     // Sub-resource for individual trip details
     const tripDetails = trips.addResource('{id}')
     tripDetails.addMethod('GET', new apigateway.LambdaIntegration(getTripDetailsLambda))
