@@ -190,6 +190,18 @@ export class CdkFootprintsStack extends cdk.Stack {
       vpc,
     })
 
+    // Lambda Function for getRecommendations
+    const getRecommendationsLambda = new NodejsFunction(this, 'getRecommendationsLambda', {
+      entry: 'lambda/getRecommendations/index.ts',
+      handler: 'handler',
+      environment: {
+        AI_SERVICE_URL: "http://ai.footprints.internal:8000",
+      },
+      vpc,
+      securityGroups: [lambdaSG],
+    })
+
+
     // Grant permissions for DynamoDB
     tripsTable.grantWriteData(addTripLambda)
     tripsTable.grantReadData(getTripsLambda)
