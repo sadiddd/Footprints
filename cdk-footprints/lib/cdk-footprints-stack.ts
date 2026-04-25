@@ -45,12 +45,19 @@ export class CdkFootprintsStack extends cdk.Stack {
       description: 'Security group for AI service',
       allowAllOutbound: true,
     });
-    
-    // Allowing traffic from port 8000 (FastAPI)
+
+    // Security Group for Lambdas that call the AI service
+    const lambdaSG = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
+      vpc,
+      description: 'Security group for Lambdas',
+      allowAllOutbound: true,
+    });
+
+    // Allow only lambdaSG to reach the AI service on port 8000
     aiSG.addIngressRule(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
+      lambdaSG,
       ec2.Port.tcp(8000),
-      'Allow VPC internal traffic on port 8000'
+      'Allow Lambda to call AI service'
     )
 
     // Allowing traffic from port 22 (SSH)
@@ -107,6 +114,7 @@ export class CdkFootprintsStack extends cdk.Stack {
         AI_SERVICE_URL: "http://ai.footprints.internal:8000",
       },
       vpc,
+      securityGroups: [lambdaSG],
     })
 
     // Lambda Function for getTrip
