@@ -4,6 +4,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 const client = new DynamoDBClient({})
 const ddbDocClient = DynamoDBDocumentClient.from(client)
+const aiServiceURL = process.env.AI_SERVICE_URL;
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     try {
@@ -50,6 +51,27 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         })
 
         await ddbDocClient.send(command)
+
+        if (aiServiceURL) {
+            try {
+                await fetch(`${aiServiceURL}/embed`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        tripId: TripID,
+                        userId: UserID,
+                        title: Title,
+                        location: Location,
+                        description: Description,
+                        photoTags: [],
+                    }),
+                })
+            } catch (embedErr) {
+                console.error("AI embedding failed (non-fatal):", embedErr instanceof Error ? embedErr.message : embedErr)
+            }
+        }
 
         return {
             statusCode: 201,
