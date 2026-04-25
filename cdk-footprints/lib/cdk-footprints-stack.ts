@@ -4,6 +4,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 export class CdkFootprintsStack extends cdk.Stack {
@@ -81,10 +82,21 @@ export class CdkFootprintsStack extends cdk.Stack {
 
     // Instance Connect Endpoint for EC2
     const ec2ConnectEndpoint = new ec2.CfnInstanceConnectEndpoint(this, 'Ec2ConnectEndpoint', {
-        subnetId: vpc.publicSubnets[0].subnetId,
+        subnetId: vpc.privateSubnets[0].subnetId,
         securityGroupIds: [aiSG.securityGroupId],
       }
     );
+
+    const privateZone = new route53.PrivateHostedZone(this, 'FootprintsPrivateZone', {
+      zoneName: "footprints.internal",
+      vpc,
+    });
+
+    new route53.ARecord(this, 'AIServiceDNSRecord', {
+      zone: privateZone,
+      recordName: 'ai',
+      target: route53.RecordTarget.fromIpAddresses(aiInstance.instancePrivateIp),
+    })
 
     // Lambda Function for addTrip
     const addTripLambda = new NodejsFunction(this, 'addTripLambda', {
@@ -92,6 +104,7 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         TABLE_NAME: tripsTable.tableName,
+        AI_SERVICE_URL: "http://ai.footprints.internal:8000",
       },
       vpc,
     })
