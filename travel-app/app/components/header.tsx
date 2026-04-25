@@ -7,6 +7,7 @@ import {
   Footprints,
   User,
   Search,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -16,7 +17,7 @@ import { useRouter } from "next/navigation";
 
 export default function Header() {
   const [user, setUser] = useState<{ name?: string; email: string } | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -87,6 +88,13 @@ export default function Header() {
           <div className="flex items-center gap-4">
             {!loading && user ? (
               <>
+                <Link
+                  href="/trips/recommendations"
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <Star className="h-4 w-4" />
+                  Recommendations
+                </Link>
                 <Link
                   href="/trips"
                   className="btn btn-accent flex items-center gap-2"
