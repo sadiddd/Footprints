@@ -200,13 +200,13 @@ def recommend(req: RecommendRequest):
     try:
         recommendations = json.loads(llm_response)
     except json.JSONDecodeError:
-        recommendations = {
-            "warning": "Model did not return valid JSON",
-            "rawResponse": llm_response,
-        }
+        raise HTTPException(
+            status_code=500,
+            detail="Model did not return valid JSON"
+        )
     
     return {
         "status": "ok",
-        "basedOnTrips": similar_results,
-        "recommendations": recommendations,
+        "similarTrips": recommendations.get("similar", []),
+        "differentTrips": recommendations.get("different", []),
     }
