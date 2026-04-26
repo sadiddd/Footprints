@@ -1,5 +1,12 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda"
 
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Methods": "OPTIONS,GET,POST",
+    "Content-Type": "application/json",
+};
+
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
 
     try {
@@ -8,6 +15,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         if (!aiServiceUrl) {
             return {
                 statusCode: 500,
+                headers: corsHeaders,
                 body: JSON.stringify({message: "AI Service URL is not configured"})
             };
         }
@@ -17,10 +25,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         if (!userId) {
             return {
                 statusCode: 400,
-                headers: {
-                    'Access-Control-Allow-Origin': '*',
-                    'Content-Type': 'application/json'
-                },
+                headers: corsHeaders,
                 body: JSON.stringify({message: "Missing UserID"})
             }
         }
@@ -42,23 +47,21 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         if (!response.ok) {
             return {
                 statusCode: response.status,
+                headers: corsHeaders,
                 body: JSON.stringify(data)
             };
         }
 
         return {
             statusCode: 200,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*",
-                "Access-Control-Allow-Methods": "OPTIONS,GET,POST",
-              },
+            headers: corsHeaders,
             body: JSON.stringify(data)
         };
     } catch (error) {
         console.error("Failed to get recommendations:", error);
         return {
             statusCode: 500,
+            headers: corsHeaders,
             body: JSON.stringify({message: "Failed to get recommendations"})
         };
     }

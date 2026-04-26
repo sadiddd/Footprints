@@ -199,6 +199,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       },
       vpc,
       securityGroups: [lambdaSG],
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
     })
 
 
@@ -229,6 +231,23 @@ export class CdkFootprintsStack extends cdk.Stack {
         allowHeaders: ['*'],
       }
     })
+
+    // Ensure CORS headers are present even when API Gateway returns an error
+    // before the Lambda can respond (e.g. Lambda timeout/crash producing a 502).
+    api.addGatewayResponse('Default5xx', {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'*'",
+      },
+    });
+    api.addGatewayResponse('Default4xx', {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'*'",
+      },
+    });
 
     // Resources for trips
     const trips = api.root.addResource('Trips')

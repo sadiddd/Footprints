@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import {
   Camera,
   MapPin,
@@ -121,7 +121,7 @@ export default function AddTrip() {
         const { uploadUrls } = await presignResponse.json();
 
         // Step 2: Upload all images to S3 in parallel
-        const uploadResults = await Promise.all(
+        await Promise.all(
           uploadUrls.map(
             async (
               urlData: { uploadUrl: string; imageUrl: string },

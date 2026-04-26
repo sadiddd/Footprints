@@ -90,7 +90,7 @@ export default function Header() {
               <>
                 <Link
                   href="/recommendations"
-                  className="btn btn-primary btn-sm flex items-center gap-2"
+                  className="btn btn-primary flex items-center gap-2"
                 >
                   <Star className="h-4 w-4" />
                   Recommendations

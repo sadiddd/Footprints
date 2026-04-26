@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Camera, MapPin, FileText, X, Upload, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { getCurrentUser } from "aws-amplify/auth";
@@ -50,11 +50,11 @@ export default function UpdateTrip() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [imagesLoading, setImagesLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [, setImagesLoading] = useState(false);
+  const [, setLoading] = useState(true);
   const [locations, setLocations] = useState<LocationPin[]>([]);
 
-  async function fetchTrip() {
+  const fetchTrip = useCallback(async () => {
     try {
       const currentUser = await getCurrentUser();
       const userId = currentUser.userId;
@@ -130,7 +130,7 @@ export default function UpdateTrip() {
       setError(errorMessage);
       setLoading(false);
     }
-  }
+  }, [tripId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -138,7 +138,7 @@ export default function UpdateTrip() {
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [tripId]);
+  }, [fetchTrip]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

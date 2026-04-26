@@ -6,7 +6,6 @@
 export async function convertHeicToJpeg(file: File): Promise<File> {
   try {
     // Dynamically import heic2any only on client-side
-    // @ts-ignore - heic2any doesn't have perfect TypeScript support
     const heic2any = (await import('heic2any')).default;
     
     // Convert HEIC to JPEG blob

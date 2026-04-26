@@ -37,7 +37,6 @@ export default function Trips() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [images, setImages] = useState<File[]>([]);
 
   useEffect(() => {
     const fetchTrips = async () => {

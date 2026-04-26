@@ -68,8 +68,8 @@ export default function Recommendations() {
                   Ready for your next adventure?
                 </h3>
                 <p className="text-base-content/70 max-w-md">
-                  We'll look at the trips you've already taken and suggest a
-                  handful of destinations we think you'll love.
+                  We&apos;ll look at the trips you&apos;ve already taken and
+                  suggest a handful of destinations we think you&apos;ll love.
                 </p>
                 <button
                   onClick={getRecommendations}
