@@ -89,7 +89,7 @@ export default function Header() {
             {!loading && user ? (
               <>
                 <Link
-                  href="/trips/recommendations"
+                  href="/recommendations"
                   className="btn btn-primary btn-sm flex items-center gap-2"
                 >
                   <Star className="h-4 w-4" />
