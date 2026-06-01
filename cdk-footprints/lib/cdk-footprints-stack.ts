@@ -112,6 +112,7 @@ export class CdkFootprintsStack extends cdk.Stack {
       'echo "OPENAI_API_KEY=$OPENAI_KEY" > /etc/ai-service.env',
       `echo "TRIPS_TABLE=${tripsTable.tableName}" >> /etc/ai-service.env`,
       'echo "AWS_REGION=$REGION" >> /etc/ai-service.env',
+      'echo "AWS_DEFAULT_REGION=$REGION" >> /etc/ai-service.env',
       'chmod 600 /etc/ai-service.env',
 
       'systemctl daemon-reload',

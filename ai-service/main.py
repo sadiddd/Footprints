@@ -18,6 +18,9 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TRIPS_TABLE = os.getenv("TRIPS_TABLE")
+# Resolve region explicitly so we don't depend on botocore's env-var handling
+# (older botocore only honors AWS_DEFAULT_REGION, not AWS_REGION).
+AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -146,7 +149,7 @@ def backfill_from_dynamo() -> None:
         print("Ollama not ready; skipping startup backfill")
         return
 
-    table = boto3.resource("dynamodb").Table(TRIPS_TABLE)
+    table = boto3.resource("dynamodb", region_name=AWS_REGION).Table(TRIPS_TABLE)
 
     items: List[dict] = []
     resp = table.scan()
