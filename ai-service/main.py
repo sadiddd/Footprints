@@ -6,7 +6,10 @@ import requests
 import chromadb
 import os
 import json
+import threading
+import time
 import numpy as np
+import boto3
 
 app = FastAPI()
 
@@ -14,6 +17,7 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TRIPS_TABLE = os.getenv("TRIPS_TABLE")
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -96,12 +100,8 @@ def call_llm(prompt: str) -> str:
             detail=f"OpenAI LLM request failed: {str(e)}",
         )
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.post("/embed")
-def embed_trip(req: EmbedRequest):
+def embed_and_store(req: EmbedRequest) -> None:
+    """Generate an embedding for a trip and upsert it into ChromaDB."""
     trip_text = build_trip_text(req)
     embedding = get_embedding(trip_text)
 
@@ -117,6 +117,81 @@ def embed_trip(req: EmbedRequest):
             }
         ],
     )
+
+def wait_for_ollama(timeout: int = 300) -> bool:
+    """Block until the Ollama server is reachable, or give up after timeout."""
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
+            if resp.status_code == 200:
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(5)
+    return False
+
+def backfill_from_dynamo() -> None:
+    """Rebuild ChromaDB embeddings from DynamoDB.
+
+    Runs on startup when the local Chroma store is empty (e.g. after the EC2
+    instance has been replaced), so recommendations keep working without any
+    manual intervention.
+    """
+    if not TRIPS_TABLE:
+        print("TRIPS_TABLE not set; skipping startup backfill")
+        return
+
+    if not wait_for_ollama():
+        print("Ollama not ready; skipping startup backfill")
+        return
+
+    table = boto3.resource("dynamodb").Table(TRIPS_TABLE)
+
+    items: List[dict] = []
+    resp = table.scan()
+    items.extend(resp.get("Items", []))
+    while "LastEvaluatedKey" in resp:
+        resp = table.scan(ExclusiveStartKey=resp["LastEvaluatedKey"])
+        items.extend(resp.get("Items", []))
+
+    embedded = 0
+    for item in items:
+        try:
+            embed_and_store(EmbedRequest(
+                tripId=item["TripID"],
+                userId=item["UserID"],
+                title=item.get("Title", ""),
+                location=item.get("Location", ""),
+                description=item.get("Description", ""),
+                photoTags=[],
+            ))
+            embedded += 1
+        except Exception as e:
+            print(f"Failed to embed trip {item.get('TripID')}: {e}")
+
+    print(f"Startup backfill complete: embedded {embedded}/{len(items)} trips")
+
+@app.on_event("startup")
+def startup_backfill():
+    def run():
+        try:
+            if collection.count() == 0:
+                print("Chroma store empty; starting embedding backfill from DynamoDB")
+                backfill_from_dynamo()
+        except Exception as e:
+            print(f"Startup backfill failed: {e}")
+
+    # Run in the background so the service becomes healthy immediately
+    threading.Thread(target=run, daemon=True).start()
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+@app.post("/embed")
+def embed_trip(req: EmbedRequest):
+    embed_and_store(req)
 
     return {
         "status": "ok",

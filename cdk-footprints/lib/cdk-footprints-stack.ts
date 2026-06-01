@@ -5,6 +5,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 export class CdkFootprintsStack extends cdk.Stack {
@@ -67,24 +68,29 @@ export class CdkFootprintsStack extends cdk.Stack {
       'Allow SSH traffic from EC2 Instance Connect Endpoint'
     );
 
-    // Bootstrap script: clones repo, installs deps, creates systemd service.
-    // After deploy, SSH in and run ONE command to set the OpenAI key:
-    //   echo "OPENAI_API_KEY=sk-..." | sudo tee /etc/ai-service.env && sudo chmod 600 /etc/ai-service.env && sudo systemctl start ai-service
+    // Bootstrap script: fully self-contained, zero-touch.
+    // Installs Ollama + embed model, clones the app, pulls the OpenAI key from
+    // SSM, and starts the service. The service self-heals its embeddings from
+    // DynamoDB on startup, so no manual steps are needed after a deploy.
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
       'dnf install -y python3-pip git',
 
+      // Install Ollama (local embedding model server) and pull the embed model
+      'curl -fsSL https://ollama.com/install.sh | sh',
+      'systemctl enable ollama',
+      'systemctl start ollama',
+      'for i in 1 2 3 4 5; do ollama pull nomic-embed-text && break; sleep 10; done',
+
+      // Clone the app and install Python deps
       'sudo -u ec2-user git clone https://github.com/sadiddd/Footprints.git /home/ec2-user/Footprints',
       'pip3 install --ignore-installed -r /home/ec2-user/Footprints/ai-service/requirements.txt',
-
-      // Empty env file — user fills this in after deploy
-      'touch /etc/ai-service.env',
-      'chmod 600 /etc/ai-service.env',
 
       // Systemd unit — written line by line to avoid heredoc issues
       'echo "[Unit]" > /etc/systemd/system/ai-service.service',
       'echo "Description=Footprints AI Service" >> /etc/systemd/system/ai-service.service',
-      'echo "After=network.target" >> /etc/systemd/system/ai-service.service',
+      'echo "After=network.target ollama.service" >> /etc/systemd/system/ai-service.service',
+      'echo "Wants=ollama.service" >> /etc/systemd/system/ai-service.service',
       'echo "" >> /etc/systemd/system/ai-service.service',
       'echo "[Service]" >> /etc/systemd/system/ai-service.service',
       'echo "User=ec2-user" >> /etc/systemd/system/ai-service.service',
@@ -97,9 +103,16 @@ export class CdkFootprintsStack extends cdk.Stack {
       'echo "[Install]" >> /etc/systemd/system/ai-service.service',
       'echo "WantedBy=multi-user.target" >> /etc/systemd/system/ai-service.service',
 
+      // Build the env file: OpenAI key from SSM + table/region for self-heal backfill
+      `OPENAI_KEY=$(aws ssm get-parameter --name /footprints/openai-api-key --with-decryption --query Parameter.Value --output text --region ${this.region})`,
+      'echo "OPENAI_API_KEY=$OPENAI_KEY" > /etc/ai-service.env',
+      `echo "TRIPS_TABLE=${tripsTable.tableName}" >> /etc/ai-service.env`,
+      `echo "AWS_REGION=${this.region}" >> /etc/ai-service.env`,
+      'chmod 600 /etc/ai-service.env',
+
       'systemctl daemon-reload',
       'systemctl enable ai-service',
-      // Service starts automatically once the key is populated via the post-deploy step
+      'systemctl start ai-service',
     );
 
     // EC2 Instance for AI service
@@ -121,7 +134,21 @@ export class CdkFootprintsStack extends cdk.Stack {
         }),
       }],
       userData,
+      // Any change to userData forces a fresh instance, so the bootstrap
+      // script actually re-runs on deploy instead of being ignored.
+      userDataCausesReplacement: true,
     })
+
+    // OpenAI key lives in SSM Parameter Store (SecureString) so it survives
+    // instance replacement. Set it once with:
+    //   aws ssm put-parameter --name /footprints/openai-api-key --type SecureString --value "sk-..."
+    const openAiKeyParam = ssm.StringParameter.fromSecureStringParameterAttributes(this, 'OpenAiKeyParam', {
+      parameterName: '/footprints/openai-api-key',
+    });
+    openAiKeyParam.grantRead(aiInstance);
+
+    // The AI service reads DynamoDB directly to self-heal its embeddings on startup
+    tripsTable.grantReadData(aiInstance);
 
     // Instance Connect Endpoint for EC2
     const ec2ConnectEndpoint = new ec2.CfnInstanceConnectEndpoint(this, 'Ec2ConnectEndpoint', {
