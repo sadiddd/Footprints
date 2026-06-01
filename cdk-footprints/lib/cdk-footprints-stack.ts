@@ -67,6 +67,54 @@ export class CdkFootprintsStack extends cdk.Stack {
       'Allow SSH traffic from EC2 Instance Connect Endpoint'
     );
 
+    // Bootstrap script: clone repo, install deps, create systemd service.
+    // OPENAI_API_KEY is NOT set here — after deploy, SSH in and run:
+    //   sudo bash /opt/set-openai-key.sh YOUR_KEY
+    const userData = ec2.UserData.forLinux();
+    userData.addCommands(
+      'set -e',
+      'dnf install -y python3-pip git',
+
+      // Clone repo as ec2-user
+      'sudo -u ec2-user git clone https://github.com/sadiddd/Footprints.git /home/ec2-user/Footprints',
+      'cd /home/ec2-user/Footprints/ai-service && pip3 install -r requirements.txt',
+
+      // Env file — placeholder until user sets the real key
+      'touch /etc/ai-service.env',
+      'chmod 600 /etc/ai-service.env',
+
+      // Helper script so user can set the key easily after SSH
+      `cat > /opt/set-openai-key.sh << 'EOF'
+#!/bin/bash
+echo "OPENAI_API_KEY=$1" > /etc/ai-service.env
+chmod 600 /etc/ai-service.env
+systemctl restart ai-service
+echo "Key set and service restarted."
+EOF`,
+      'chmod +x /opt/set-openai-key.sh',
+
+      // Systemd unit
+      `cat > /etc/systemd/system/ai-service.service << 'EOF'
+[Unit]
+Description=Footprints AI Service
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/Footprints/ai-service
+EnvironmentFile=/etc/ai-service.env
+ExecStart=/usr/local/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF`,
+      'systemctl daemon-reload',
+      'systemctl enable ai-service',
+      'systemctl start ai-service',
+    );
+
     // EC2 Instance for AI service
     const aiInstance = new ec2.Instance(this, 'AIServiceInstance', {
       vpc,
@@ -85,6 +133,7 @@ export class CdkFootprintsStack extends cdk.Stack {
           encrypted: true,
         }),
       }],
+      userData,
     })
 
     // Instance Connect Endpoint for EC2
@@ -199,7 +248,21 @@ export class CdkFootprintsStack extends cdk.Stack {
       },
       vpc,
       securityGroups: [lambdaSG],
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 512,
+    })
+
+    // Lambda Function for backfilling embeddings after EC2 replacement
+    const backfillEmbeddingsLambda = new NodejsFunction(this, 'backfillEmbeddingsLambda', {
+      entry: 'lambda/backfillEmbeddings/index.ts',
+      handler: 'handler',
+      environment: {
+        TABLE_NAME: tripsTable.tableName,
+        AI_SERVICE_URL: "http://ai.footprints.internal:8000",
+      },
+      vpc,
+      securityGroups: [lambdaSG],
+      timeout: cdk.Duration.minutes(15),
       memorySize: 512,
     })
 
@@ -211,6 +274,7 @@ export class CdkFootprintsStack extends cdk.Stack {
     tripsTable.grantReadData(getPublicTripsLambda)
     tripsTable.grantReadWriteData(updateTripLambda)
     tripsTable.grantReadWriteData(deleteTripLambda)
+    tripsTable.grantReadData(backfillEmbeddingsLambda)
 
     // Grant permissions for S3
     photosBucket.grantRead(addTripLambda)
