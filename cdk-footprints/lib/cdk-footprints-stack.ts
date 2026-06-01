@@ -75,7 +75,7 @@ export class CdkFootprintsStack extends cdk.Stack {
       'dnf install -y python3-pip git',
 
       'sudo -u ec2-user git clone https://github.com/sadiddd/Footprints.git /home/ec2-user/Footprints',
-      'pip3 install -r /home/ec2-user/Footprints/ai-service/requirements.txt',
+      'pip3 install --ignore-installed -r /home/ec2-user/Footprints/ai-service/requirements.txt',
 
       // Empty env file — user fills this in after deploy
       'touch /etc/ai-service.env',
