@@ -76,11 +76,14 @@ export class CdkFootprintsStack extends cdk.Stack {
     userData.addCommands(
       'dnf install -y python3-pip git',
 
-      // Install Ollama (local embedding model server) and pull the embed model
+      // Install Ollama (local embedding model server) and pull the embed model.
+      // Use the full binary path and wait for the daemon, since cloud-init runs
+      // as root with a minimal PATH that may not include /usr/local/bin.
       'curl -fsSL https://ollama.com/install.sh | sh',
       'systemctl enable ollama',
       'systemctl start ollama',
-      'for i in 1 2 3 4 5; do ollama pull nomic-embed-text && break; sleep 10; done',
+      'for i in $(seq 1 30); do curl -sf http://localhost:11434/api/tags && break; sleep 5; done',
+      'for i in 1 2 3 4 5; do /usr/local/bin/ollama pull nomic-embed-text && break; sleep 15; done',
 
       // Clone the app and install Python deps
       'sudo -u ec2-user git clone https://github.com/sadiddd/Footprints.git /home/ec2-user/Footprints',
