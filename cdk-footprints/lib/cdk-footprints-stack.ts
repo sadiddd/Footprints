@@ -103,11 +103,16 @@ export class CdkFootprintsStack extends cdk.Stack {
       'echo "[Install]" >> /etc/systemd/system/ai-service.service',
       'echo "WantedBy=multi-user.target" >> /etc/systemd/system/ai-service.service',
 
+      // Resolve the region from instance metadata (IMDSv2) rather than a CDK
+      // token, since this stack is environment-agnostic.
+      'TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")',
+      'REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/region)',
+
       // Build the env file: OpenAI key from SSM + table/region for self-heal backfill
-      `OPENAI_KEY=$(aws ssm get-parameter --name /footprints/openai-api-key --with-decryption --query Parameter.Value --output text --region ${this.region})`,
+      'OPENAI_KEY=$(aws ssm get-parameter --name /footprints/openai-api-key --with-decryption --query Parameter.Value --output text --region $REGION)',
       'echo "OPENAI_API_KEY=$OPENAI_KEY" > /etc/ai-service.env',
       `echo "TRIPS_TABLE=${tripsTable.tableName}" >> /etc/ai-service.env`,
-      `echo "AWS_REGION=${this.region}" >> /etc/ai-service.env`,
+      'echo "AWS_REGION=$REGION" >> /etc/ai-service.env',
       'chmod 600 /etc/ai-service.env',
 
       'systemctl daemon-reload',
