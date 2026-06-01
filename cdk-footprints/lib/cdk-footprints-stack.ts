@@ -103,10 +103,9 @@ export class CdkFootprintsStack extends cdk.Stack {
       'echo "[Install]" >> /etc/systemd/system/ai-service.service',
       'echo "WantedBy=multi-user.target" >> /etc/systemd/system/ai-service.service',
 
-      // Resolve the region from instance metadata (IMDSv2) rather than a CDK
-      // token, since this stack is environment-agnostic.
-      'TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")',
-      'REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/region)',
+      // Region is hardcoded since this stack is environment-agnostic and only
+      // ever deploys to us-east-1.
+      'REGION=us-east-1',
 
       // Build the env file: OpenAI key from SSM + table/region for self-heal backfill
       'OPENAI_KEY=$(aws ssm get-parameter --name /footprints/openai-api-key --with-decryption --query Parameter.Value --output text --region $REGION)',
