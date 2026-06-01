@@ -67,52 +67,39 @@ export class CdkFootprintsStack extends cdk.Stack {
       'Allow SSH traffic from EC2 Instance Connect Endpoint'
     );
 
-    // Bootstrap script: clone repo, install deps, create systemd service.
-    // OPENAI_API_KEY is NOT set here — after deploy, SSH in and run:
-    //   sudo bash /opt/set-openai-key.sh YOUR_KEY
+    // Bootstrap script: clones repo, installs deps, creates systemd service.
+    // After deploy, SSH in and run ONE command to set the OpenAI key:
+    //   echo "OPENAI_API_KEY=sk-..." | sudo tee /etc/ai-service.env && sudo chmod 600 /etc/ai-service.env && sudo systemctl start ai-service
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
-      'set -e',
       'dnf install -y python3-pip git',
 
-      // Clone repo as ec2-user
       'sudo -u ec2-user git clone https://github.com/sadiddd/Footprints.git /home/ec2-user/Footprints',
-      'cd /home/ec2-user/Footprints/ai-service && pip3 install -r requirements.txt',
+      'pip3 install -r /home/ec2-user/Footprints/ai-service/requirements.txt',
 
-      // Env file — placeholder until user sets the real key
+      // Empty env file — user fills this in after deploy
       'touch /etc/ai-service.env',
       'chmod 600 /etc/ai-service.env',
 
-      // Helper script so user can set the key easily after SSH
-      `cat > /opt/set-openai-key.sh << 'EOF'
-#!/bin/bash
-echo "OPENAI_API_KEY=$1" > /etc/ai-service.env
-chmod 600 /etc/ai-service.env
-systemctl restart ai-service
-echo "Key set and service restarted."
-EOF`,
-      'chmod +x /opt/set-openai-key.sh',
+      // Systemd unit — written line by line to avoid heredoc issues
+      'echo "[Unit]" > /etc/systemd/system/ai-service.service',
+      'echo "Description=Footprints AI Service" >> /etc/systemd/system/ai-service.service',
+      'echo "After=network.target" >> /etc/systemd/system/ai-service.service',
+      'echo "" >> /etc/systemd/system/ai-service.service',
+      'echo "[Service]" >> /etc/systemd/system/ai-service.service',
+      'echo "User=ec2-user" >> /etc/systemd/system/ai-service.service',
+      'echo "WorkingDirectory=/home/ec2-user/Footprints/ai-service" >> /etc/systemd/system/ai-service.service',
+      'echo "EnvironmentFile=/etc/ai-service.env" >> /etc/systemd/system/ai-service.service',
+      'echo "ExecStart=/usr/local/bin/uvicorn main:app --host 0.0.0.0 --port 8000" >> /etc/systemd/system/ai-service.service',
+      'echo "Restart=always" >> /etc/systemd/system/ai-service.service',
+      'echo "RestartSec=5" >> /etc/systemd/system/ai-service.service',
+      'echo "" >> /etc/systemd/system/ai-service.service',
+      'echo "[Install]" >> /etc/systemd/system/ai-service.service',
+      'echo "WantedBy=multi-user.target" >> /etc/systemd/system/ai-service.service',
 
-      // Systemd unit
-      `cat > /etc/systemd/system/ai-service.service << 'EOF'
-[Unit]
-Description=Footprints AI Service
-After=network.target
-
-[Service]
-User=ec2-user
-WorkingDirectory=/home/ec2-user/Footprints/ai-service
-EnvironmentFile=/etc/ai-service.env
-ExecStart=/usr/local/bin/uvicorn main:app --host 0.0.0.0 --port 8000
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF`,
       'systemctl daemon-reload',
       'systemctl enable ai-service',
-      'systemctl start ai-service',
+      // Service starts automatically once the key is populated via the post-deploy step
     );
 
     // EC2 Instance for AI service
