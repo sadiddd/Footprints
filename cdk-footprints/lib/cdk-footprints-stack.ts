@@ -3,9 +3,10 @@ import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
+// AI infrastructure temporarily disabled — uncomment to re-enable
+// import * as ec2 from 'aws-cdk-lib/aws-ec2';
+// import * as route53 from 'aws-cdk-lib/aws-route53';
+// import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 export class CdkFootprintsStack extends cdk.Stack {
@@ -33,6 +34,11 @@ export class CdkFootprintsStack extends cdk.Stack {
         maxAge: 3000,
       }]
     })
+
+    /* AI INFRASTRUCTURE — commented out to pause EC2/NAT costs (~$95/mo)
+     * To re-enable: uncomment this block, the userData block, the aiInstance block,
+     * the openAiKeyParam block, the ec2ConnectEndpoint block, the Route53 blocks,
+     * the AI Lambda blocks, and re-add vpc/securityGroups to all NodejsFunctions.
 
     // VPC for EC2 and Lambdas
     const vpc = new ec2.Vpc(this, 'Vpc', {
@@ -67,6 +73,9 @@ export class CdkFootprintsStack extends cdk.Stack {
       ec2.Port.tcp(22),
       'Allow SSH traffic from EC2 Instance Connect Endpoint'
     );
+    */
+
+    /* EC2 USER DATA + INSTANCE — commented out, part of AI infrastructure pause
 
     // Bootstrap script: fully self-contained, zero-touch.
     // Installs Ollama + embed model, clones the app, pulls the OpenAI key from
@@ -175,6 +184,7 @@ export class CdkFootprintsStack extends cdk.Stack {
       recordName: 'ai',
       target: route53.RecordTarget.fromIpAddresses(aiInstance.instancePrivateIp),
     })
+    */
 
     // Lambda Function for addTrip
     const addTripLambda = new NodejsFunction(this, 'addTripLambda', {
@@ -182,10 +192,8 @@ export class CdkFootprintsStack extends cdk.Stack {
       handler: 'handler',
       environment: {
         TABLE_NAME: tripsTable.tableName,
-        AI_SERVICE_URL: "http://ai.footprints.internal:8000",
+        // AI_SERVICE_URL removed — re-add "http://ai.footprints.internal:8000" when restoring AI
       },
-      vpc,
-      securityGroups: [lambdaSG],
     })
 
     // Lambda Function for getTrip
@@ -196,7 +204,6 @@ export class CdkFootprintsStack extends cdk.Stack {
         TABLE_NAME: tripsTable.tableName,
         BUCKET_NAME: photosBucket.bucketName,
       },
-      vpc,
     })
 
     // Lambda Function for getTripDetails
@@ -207,7 +214,6 @@ export class CdkFootprintsStack extends cdk.Stack {
         TABLE_NAME: tripsTable.tableName,
         BUCKET_NAME: photosBucket.bucketName,
       },
-      vpc,
     })
 
     // Lambda Function for getPublicTrips
@@ -218,7 +224,6 @@ export class CdkFootprintsStack extends cdk.Stack {
         TABLE_NAME: tripsTable.tableName,
         BUCKET_NAME: photosBucket.bucketName,
       },
-      vpc,
     })
 
     // Lambda Function for getUploadUrls
@@ -228,7 +233,6 @@ export class CdkFootprintsStack extends cdk.Stack {
       environment: {
         BUCKET_NAME: photosBucket.bucketName,
       },
-      vpc,
     })
 
     // Lambda Function for getImageUrls
@@ -238,7 +242,6 @@ export class CdkFootprintsStack extends cdk.Stack {
       environment: {
         BUCKET_NAME: photosBucket.bucketName,
       },
-      vpc,
     })
 
     // Lambda Function for updateTrip
@@ -248,7 +251,6 @@ export class CdkFootprintsStack extends cdk.Stack {
       environment: {
         TABLE_NAME: tripsTable.tableName,
       },
-      vpc,
     })
 
     // Lambda Function for deleteTrip
@@ -258,8 +260,9 @@ export class CdkFootprintsStack extends cdk.Stack {
       environment: {
         TABLE_NAME: tripsTable.tableName,
       },
-      vpc,
     })
+
+    /* AI LAMBDAS — commented out, part of AI infrastructure pause
 
     // Lambda Function for getRecommendations
     const getRecommendationsLambda = new NodejsFunction(this, 'getRecommendationsLambda', {
@@ -287,6 +290,7 @@ export class CdkFootprintsStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(15),
       memorySize: 512,
     })
+    */
 
 
     // Grant permissions for DynamoDB
@@ -296,7 +300,7 @@ export class CdkFootprintsStack extends cdk.Stack {
     tripsTable.grantReadData(getPublicTripsLambda)
     tripsTable.grantReadWriteData(updateTripLambda)
     tripsTable.grantReadWriteData(deleteTripLambda)
-    tripsTable.grantReadData(backfillEmbeddingsLambda)
+    // tripsTable.grantReadData(backfillEmbeddingsLambda) // AI infrastructure pause
 
     // Grant permissions for S3
     photosBucket.grantRead(addTripLambda)
@@ -342,9 +346,9 @@ export class CdkFootprintsStack extends cdk.Stack {
     trips.addMethod('PUT', new apigateway.LambdaIntegration(updateTripLambda))
     trips.addMethod('DELETE', new apigateway.LambdaIntegration(deleteTripLambda))
     
-    // Resources for recommendations
-    const recommendations = api.root.addResource('recommendations')
-    recommendations.addMethod('POST', new apigateway.LambdaIntegration(getRecommendationsLambda))
+    // AI infrastructure pause — recommendations route commented out
+    // const recommendations = api.root.addResource('recommendations')
+    // recommendations.addMethod('POST', new apigateway.LambdaIntegration(getRecommendationsLambda))
 
     // Sub-resource for individual trip details
     const tripDetails = trips.addResource('{id}')

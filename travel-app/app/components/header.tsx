@@ -7,7 +7,7 @@ import {
   Footprints,
   User,
   Search,
-  Star,
+  // Star, // AI infrastructure pause — re-enable with Recommendations link
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -88,6 +88,7 @@ export default function Header() {
           <div className="flex items-center gap-4">
             {!loading && user ? (
               <>
+                {/* Recommendations link — AI infrastructure pause; uncomment to restore
                 <Link
                   href="/recommendations"
                   className="btn btn-primary flex items-center gap-2"
@@ -95,6 +96,7 @@ export default function Header() {
                   <Star className="h-4 w-4" />
                   Recommendations
                 </Link>
+                */}
                 <Link
                   href="/trips"
                   className="btn btn-accent flex items-center gap-2"

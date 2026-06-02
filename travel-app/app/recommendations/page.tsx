@@ -1,7 +1,53 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
+import Link from "next/link";
+
+// AI infrastructure pause — placeholder shown until EC2/NAT is restored.
+// To re-enable: delete this component and uncomment RecommendationsFull below.
+export default function Recommendations() {
+  return (
+    <div className="min-h-screen bg-base-100">
+      <div className="pt-24 pb-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="mb-12">
+            <h1 className="text-4xl sm:text-5xl font-serif font-bold mb-2 text-base-content">
+              Recommendations
+            </h1>
+            <p className="text-lg text-base-content/70">
+              Discover destinations picked just for you, based on your travel
+              history.
+            </p>
+          </div>
+
+          <div className="card bg-base-200 shadow-xl">
+            <div className="card-body items-center text-center p-12">
+              <div className="w-20 h-20 rounded-full bg-base-300 flex items-center justify-center mb-4">
+                <Sparkles className="h-10 w-10 text-base-content/40" />
+              </div>
+              <h3 className="card-title text-2xl font-serif">
+                Coming back soon
+              </h3>
+              <p className="text-base-content/70 max-w-md">
+                AI-powered recommendations are temporarily unavailable. In the
+                meantime, explore trips from other travellers for inspiration.
+              </p>
+              <Link href="/browse" className="btn btn-accent btn-lg mt-4">
+                Browse Trips
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ORIGINAL RECOMMENDATIONS PAGE — uncomment and rename to `export default function Recommendations`
+   when restoring AI infrastructure (EC2 + VPC + NAT).
+
 import { useState } from "react";
-import { Sparkles, MapPin, Compass, RefreshCw } from "lucide-react";
+import { MapPin, Compass, RefreshCw } from "lucide-react";
 import { getCurrentUser } from "aws-amplify/auth";
 
 type Recommendation = {
@@ -12,7 +58,7 @@ type Recommendation = {
 
 type Status = "idle" | "loading" | "error" | "loaded";
 
-export default function Recommendations() {
+function RecommendationsFull() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [similar, setSimilar] = useState<Recommendation[]>([]);
@@ -46,7 +92,6 @@ export default function Recommendations() {
     <div className="min-h-screen bg-base-100">
       <div className="pt-24 pb-20">
         <div className="container mx-auto px-4 sm:px-6">
-          {/* Header */}
           <div className="mb-12">
             <h1 className="text-4xl sm:text-5xl font-serif font-bold mb-2 text-base-content">
               Recommendations
@@ -57,7 +102,6 @@ export default function Recommendations() {
             </p>
           </div>
 
-          {/* Idle: empty state with CTA */}
           {status === "idle" && (
             <div className="card bg-base-200 shadow-xl">
               <div className="card-body items-center text-center p-12">
@@ -82,7 +126,6 @@ export default function Recommendations() {
             </div>
           )}
 
-          {/* Loading */}
           {status === "loading" && (
             <div className="card bg-base-200 shadow-xl">
               <div className="card-body items-center text-center p-12">
@@ -94,7 +137,6 @@ export default function Recommendations() {
             </div>
           )}
 
-          {/* Error */}
           {status === "error" && (
             <div className="space-y-4">
               <div className="alert alert-error">
@@ -113,10 +155,8 @@ export default function Recommendations() {
             </div>
           )}
 
-          {/* Loaded */}
           {status === "loaded" && (
             <div className="space-y-16">
-              {/* Similar */}
               <section>
                 <div className="flex items-center gap-3 mb-6">
                   <Sparkles className="h-6 w-6 text-primary" />
@@ -142,7 +182,6 @@ export default function Recommendations() {
                 )}
               </section>
 
-              {/* Different */}
               <section>
                 <div className="flex items-center gap-3 mb-6">
                   <Compass className="h-6 w-6 text-accent" />
@@ -168,7 +207,6 @@ export default function Recommendations() {
                 )}
               </section>
 
-              {/* Re-roll */}
               <div className="flex justify-center">
                 <button
                   onClick={getRecommendations}
@@ -215,3 +253,4 @@ function RecommendationCard({
     </div>
   );
 }
+*/
